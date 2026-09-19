@@ -1,0 +1,54 @@
+# .NET build output
+bin/
+obj/
+
+# Visual Studio
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider / JetBrains
+.idea/
+*.DotSettings.user
+
+# Test results
+TestResults/
+*.trx
+coverage/
+.coverage
+
+# ASP.NET development files
+appsettings.Development.json
+appsettings.Local.json
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pfx
+*.key
+*.pem
+
+# React / Node
+node_modules/
+dist/
+build/
+.cache/
+.npm/
+*.tsbuildinfo
+
+# Logs
+*.log
+logs/
+
+# Local databases and SQL Server files
+*.mdf
+*.ndf
+*.ldf
+
+# OS files
+.DS_Store
+Thumbs.db

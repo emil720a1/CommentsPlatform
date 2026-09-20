@@ -1,6 +1,10 @@
-namespace DefaultNamespace;
+using Microsoft.EntityFrameworkCore;
 
-public class ApplicationDbContext
+namespace CommentsPlatform.Infrastructure.Persistence;
+
+public class ApplicationDbContext : DbContext
 {
-    ]
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
+    {
+    }
 }

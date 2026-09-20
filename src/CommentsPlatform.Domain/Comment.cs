@@ -18,6 +18,10 @@ public sealed class Comment
 
     public Guid? ParentCommentId { get; }
 
+    private readonly List<Attachment> _attachments = new();
+
+    public IReadOnlyList<Attachment> Attachments => _attachments.AsReadOnly();
+
     private Comment(
         Guid id,
         string userName,
@@ -123,6 +127,28 @@ public sealed class Comment
             message,
             DateTimeOffset.UtcNow,
             parentCommentId);
+    }
+
+    public Attachment AddAttachment(
+        string originalFileName,
+        string storageKey,
+        string contentType,
+        long fileSizeBytes,
+        int? width = null,
+        int? height = null)
+    {
+        var attachment = Attachment.Create(
+            Id,
+            originalFileName,
+            storageKey,
+            contentType,
+            fileSizeBytes,
+            width,
+            height);
+
+        _attachments.Add(attachment);
+
+        return attachment;
     }
 
     private static bool IsLatinLetterOrDigit(char value)

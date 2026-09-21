@@ -1,53 +1,47 @@
-# CommentsHub
+# CommentsPlatform
 
-SPA-застосунок для створення, перегляду та обговорення коментарів із підтримкою вкладених відповідей.
+A SPA application for creating, viewing and discussing comments with support for nested replies and file attachments.
 
-Назва проєкту поки є робочою і може бути змінена пізніше.
+The project name is currently provisional and may be changed later.
 
-## Технології
+## Overview
+
+CommentsPlatform is designed as a full-stack application based on Clean Architecture principles.
+
+The backend is developed first as an ASP.NET Core Web API. The frontend will be implemented later using React.
+
+## Technologies
 
 - ASP.NET Core Web API
 - Clean Architecture
+- CQRS and MediatR
 - Entity Framework Core
 - Microsoft SQL Server
 - React
 - Docker
+- xUnit
+- SonarCloud
 
-## Основні можливості
+## Planned Features
 
-- створення коментарів;
-- відповіді на коментарі;
-- каскадне відображення відповідей;
-- сортування та пагінація;
-- валідація даних;
-- захист від XSS та SQL Injection;
-- прикріплення зображень і текстових файлів.
+- create comments;
+- reply to existing comments;
+- display nested replies;
+- sort comments;
+- paginate comments;
+- validate user input;
+- protect against XSS and SQL injection;
+- attach images and text files;
+- store attachment metadata;
+- provide automated unit and integration tests.
 
-## Статус
+## Architecture
 
-Проєкт перебуває на етапі планування. Спочатку буде реалізовано backend, після цього — frontend на React.
-
-## Планована структура
+The backend follows the Clean Architecture approach:
 
 ```text
 src/
-  CommentsHub.Domain/
-  CommentsHub.Application/
-  CommentsHub.Infrastructure/
-  CommentsHub.Api/
-
-tests/
-  CommentsHub.Domain.Tests/
-  CommentsHub.Application.Tests/
-
-docs/
-```
-
-## Документація
-
-- [Task Board](docs/task-board.md)
-- [Database ER Diagram](outputs/database-erd.md)
-
-## Локальний запуск
-
-Інструкція із запуску буде додана після створення базової .NET solution та Docker-конфігурації.
+├── CommentsPlatform.Domain
+├── CommentsPlatform.Application
+├── CommentsPlatform.Infrastructure
+└── CommentsPlatform.Api

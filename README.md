@@ -45,7 +45,7 @@ src/
 ├── CommentsPlatform.Application
 ├── CommentsPlatform.Infrastructure
 └── CommentsPlatform.Api
-
+```
 
 ## Dependency Direction
 

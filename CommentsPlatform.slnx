@@ -5,4 +5,7 @@
     <Project Path="src/CommentsPlatform.Domain/CommentsPlatform.Domain.csproj" />
     <Project Path="src/CommentsPlatform.Infrastructure/CommentsPlatform.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CommentsPlatform.Domain.UnitTests/CommentsPlatform.Domain.UnitTests.csproj" />
+  </Folder>
 </Solution>

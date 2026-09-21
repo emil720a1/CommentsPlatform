@@ -45,3 +45,38 @@ src/
 ├── CommentsPlatform.Application
 ├── CommentsPlatform.Infrastructure
 └── CommentsPlatform.Api
+
+
+## Dependency Direction
+
+Dependencies point inward:
+
+```text
+Api → Infrastructure → Application → Domain
+                 ↘ Application → Domain
+The Domain layer does not depend on any other project.
+The Application layer does not depend on API or Infrastructure implementations.
+Project Status
+The project is currently under development.
+Completed:
+- initial .NET solution structure;
+- Clean Architecture project boundaries;
+- project references and dependency direction;
+- Entity Framework Core and SQL Server foundation;
+- Comment domain aggregate;
+- Attachment domain entity;
+- domain unit tests.
+Planned:
+- application use cases with CQRS and MediatR;
+- API endpoints;
+- database mappings and migrations;
+- React frontend;
+- Docker configuration;
+- CI and SonarCloud analysis.
+Development Workflow
+The project uses the following Git workflow:
+feature branch → dev → main
+- main contains stable code;
+- dev contains integrated development changes;
+- feature branches are created from dev;
+- pull requests are opened into dev.

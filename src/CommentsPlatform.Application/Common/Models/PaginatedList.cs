@@ -22,7 +22,6 @@ public sealed class PaginatedList<T>
         int pageSize,
         int totalCount)
     {
-
         ArgumentNullException.ThrowIfNull(items);
 
         if (page < 1)
@@ -44,7 +43,6 @@ public sealed class PaginatedList<T>
         Page = page;
         PageSize = pageSize;
         TotalCount = totalCount;
-
 
         TotalPages = totalCount == 0
             ? 0

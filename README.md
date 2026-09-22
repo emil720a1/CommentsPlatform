@@ -44,7 +44,7 @@ src/
 ├── CommentsPlatform.Application
 ├── CommentsPlatform.Infrastructure
 └── CommentsPlatform.Api
-
+```
 tests/ ├── CommentsPlatform.Domain.UnitTests └── CommentsPlatform.Application.UnitTests
 
 
@@ -66,6 +66,7 @@ Api ──────────────→ Application ──────
             │
             └────────────────────────────────→ Domain
 
+```
 The Domain layer does not depend on any other project.
 
 The Application layer does not depend on API or Infrastructure implementations.

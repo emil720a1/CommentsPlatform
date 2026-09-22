@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CommentsPlatform.Api/CommentsPlatform.Api.csproj" />
+    <Project Path="src/CommentsPlatform.Application/CommentsPlatform.Application.csproj" />
+    <Project Path="src/CommentsPlatform.Domain/CommentsPlatform.Domain.csproj" />
+    <Project Path="src/CommentsPlatform.Infrastructure/CommentsPlatform.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CommentsPlatform.Application.UnitTests/CommentsPlatform.Application.UnitTests.csproj" />
+    <Project Path="tests/CommentsPlatform.Domain.UnitTests/CommentsPlatform.Domain.UnitTests.csproj" />
+  </Folder>
+</Solution>

@@ -1,12 +1,12 @@
 # CommentsPlatform
 
-A SPA application for creating, viewing and discussing comments with support for nested replies and file attachments.
+A full-stack application for creating, viewing, and discussing comments with support for nested replies and file attachments.
 
 The project name is currently provisional and may be changed later.
 
 ## Overview
 
-CommentsPlatform is designed as a full-stack application based on Clean Architecture principles.
+CommentsPlatform is designed using Clean Architecture principles.
 
 The backend is developed first as an ASP.NET Core Web API. The frontend will be implemented later using React.
 
@@ -27,8 +27,7 @@ The backend is developed first as an ASP.NET Core Web API. The frontend will be 
 - create comments;
 - reply to existing comments;
 - display nested replies;
-- sort comments;
-- paginate comments;
+- sort and paginate comments;
 - validate user input;
 - protect against XSS and SQL injection;
 - attach images and text files;
@@ -45,9 +44,20 @@ src/
 ├── CommentsPlatform.Application
 ├── CommentsPlatform.Infrastructure
 └── CommentsPlatform.Api
+
+tests/
+├── CommentsPlatform.Domain.UnitTests
+└── CommentsPlatform.Application.UnitTests
 ```
 
-### Dependency Direction
+### Layer Responsibilities
+
+- `Domain` contains entities, aggregates, and business rules.
+- `Application` contains use cases, CQRS commands, queries, handlers, and abstractions.
+- `Infrastructure` contains persistence and other technical implementations.
+- `Api` is the HTTP boundary and application composition root.
+
+## Dependency Direction
 
 Dependencies point inward:
 
@@ -147,7 +157,7 @@ Example connection string:
 Server=localhost,1435;Database=CommentsPlatform;User Id=sa;Password=<MSSQL_SA_PASSWORD>;TrustServerCertificate=True;
 ```
 
-Replace `<MSSQL_SA_PASSWORD>` with the local password from `.env`. Never commit a connection string containing a real password.
+Replace `<MSSQL_SA_PASSWORD>` with the local password from `.env`. Never commit the resulting connection string if it contains a real password.
 
 ### Stopping SQL Server
 

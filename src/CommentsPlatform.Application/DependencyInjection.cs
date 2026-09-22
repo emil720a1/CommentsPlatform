@@ -9,8 +9,10 @@ public static class DependencyInjection
         this IServiceCollection services)
     {
         services.AddMediatR(configuration =>
-            configuration.RegisterServicesFromAssembly(
-                typeof(DependencyInjection).Assembly));
+        {
+            configuration.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly);
+            configuration.AddOpenBehavior(typeof(CommentsPlatform.Application.Common.Behaviors.ValidationBehavior<,>));
+        });
 
         services.AddValidatorsFromAssembly(
             typeof(DependencyInjection).Assembly);

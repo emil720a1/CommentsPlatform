@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CommentsPlatform.Application.Features.Comments.Queries.GetComments;
 using FluentValidation.TestHelper;
 using Xunit;
@@ -70,5 +71,37 @@ public sealed class GetCommentsQueryValidatorTests
 
         var result = _validator.TestValidate(query);
         result.ShouldHaveValidationErrorFor(q => q.PageSize);
+    }
+
+    [Fact]
+    public void Validate_WithInvalidSortBy_ShouldHaveValidationErrors()
+    {
+        var query = new GetCommentsQuery(1, 50, (CommentSortBy)999, SortDirection.Descending);
+
+        var result = _validator.TestValidate(query);
+        result.ShouldHaveValidationErrorFor(q => q.SortBy);
+    }
+
+    [Fact]
+    public void Validate_WithInvalidSortDirection_ShouldHaveValidationErrors()
+    {
+        var query = new GetCommentsQuery(1, 50, CommentSortBy.CreatedAt, (SortDirection)999);
+
+        var result = _validator.TestValidate(query);
+
+        result.ShouldHaveValidationErrorFor(q => q.SortDirection);
+    }
+
+    [Fact]
+    public void Validate_WithAllValidParams_ShouldNotHaveErrors()
+    {
+        var query = new GetCommentsQuery(
+            Page: 1,
+            PageSize: 10,
+            SortBy: CommentSortBy.CreatedAt,
+            SortDirection: SortDirection.Descending);
+
+        var result = _validator.TestValidate(query);
+        result.ShouldNotHaveAnyValidationErrors();
     }
 }

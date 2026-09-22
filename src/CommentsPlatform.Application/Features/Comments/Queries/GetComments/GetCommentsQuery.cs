@@ -16,8 +16,8 @@ public enum SortDirection
 }
 
 public record GetCommentsQuery(
-    int Page,
-    int PageSize,
-    CommentSortBy SortBy,
-    SortDirection SortDirection) :
+    int Page = 1,
+    int PageSize = 25,
+    CommentSortBy SortBy = CommentSortBy.CreatedAt,
+    SortDirection SortDirection = SortDirection.Descending) :
 IRequest<ErrorOr<PaginatedList<CommentDto>>>;

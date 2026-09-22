@@ -13,5 +13,11 @@ public sealed class GetCommentsQueryValidator : AbstractValidator<GetCommentsQue
         RuleFor(q => q.PageSize)
         .GreaterThan(0)
         .LessThanOrEqualTo(100);
+
+        RuleFor(q => q.SortBy)
+            .IsInEnum();
+
+        RuleFor(q => q.SortDirection)
+            .IsInEnum();
     }
 }

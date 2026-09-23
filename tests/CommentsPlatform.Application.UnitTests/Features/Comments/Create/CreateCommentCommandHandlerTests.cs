@@ -1,5 +1,3 @@
-using FluentValidation;
-using FluentValidation.Results;
 using CommentsPlatform.Application.Common.Abstractions.Persistence;
 using CommentsPlatform.Application.Features.Comments.Create;
 using CommentsPlatform.Domain;
@@ -17,11 +15,8 @@ public sealed class CreateCommentCommandHandlerTests
     {
         _commentRepositoryMock = new Mock<ICommentRepository>();
 
-        var validator = new CreateCommentCommandValidator();
-
         _handler = new CreateCommentCommandHandler(
-            _commentRepositoryMock.Object,
-            validator);
+            _commentRepositoryMock.Object);
     }
 
     [Fact]
@@ -114,47 +109,6 @@ public sealed class CreateCommentCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WithInvalidCommand_ReturnsValidationErrorAndDoesNotUseRepository()
-    {
-        var parentCommentId = Guid.NewGuid();
-
-        var command = new CreateCommentCommand(
-            string.Empty,
-            "user@example.com",
-            "https://example.com/",
-            "Test message",
-            parentCommentId);
-
-        var result = await _handler.Handle(
-            command,
-            CancellationToken.None);
-
-        Assert.True(result.IsError);
-
-        var error = Assert.Single(result.Errors);
-
-        Assert.Equal(
-            "Comments.UserName.Required",
-            error.Code);
-
-        Assert.Equal(
-            ErrorType.Validation,
-            error.Type);
-
-        _commentRepositoryMock.Verify(
-            repository => repository.ExistsAsync(
-                It.IsAny<Guid>(),
-                It.IsAny<CancellationToken>()),
-            Times.Never);
-
-        _commentRepositoryMock.Verify(
-            repository => repository.AddAsync(
-                It.IsAny<Comment>(),
-                It.IsAny<CancellationToken>()),
-            Times.Never);
-    }
-
-    [Fact]
     public async Task Handle_WithExistingParentComment_ReturnsCommentIdAndPersistsReply()
     {
         var parentCommentId = Guid.NewGuid();
@@ -203,18 +157,6 @@ public sealed class CreateCommentCommandHandlerTests
     [Fact]
     public async Task Handle_WhenDomainFactoryRejectsCommand_ReturnsDomainValidationError()
     {
-        var validatorMock = new Mock<IValidator<CreateCommentCommand>>();
-
-        validatorMock
-            .Setup(validator => validator.ValidateAsync(
-                It.IsAny<CreateCommentCommand>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ValidationResult());
-
-        var handler = new CreateCommentCommandHandler(
-            _commentRepositoryMock.Object,
-            validatorMock.Object);
-
         var command = new CreateCommentCommand(
             string.Empty,
             "user@example.com",
@@ -222,7 +164,7 @@ public sealed class CreateCommentCommandHandlerTests
             "Test message",
             null);
 
-        var result = await handler.Handle(
+        var result = await _handler.Handle(
             command,
             CancellationToken.None);
 
@@ -231,87 +173,6 @@ public sealed class CreateCommentCommandHandlerTests
 
         Assert.Equal("Comments.DomainValidation", error.Code);
         Assert.Equal(ErrorType.Validation, error.Type);
-
-        validatorMock.Verify(
-            validator => validator.ValidateAsync(
-                command,
-                CancellationToken.None),
-            Times.Once);
-
-        _commentRepositoryMock.Verify(
-            repository => repository.ExistsAsync(
-                It.IsAny<Guid>(),
-                It.IsAny<CancellationToken>()),
-            Times.Never);
-
-        _commentRepositoryMock.Verify(
-            repository => repository.AddAsync(
-                It.IsAny<Comment>(),
-                It.IsAny<CancellationToken>()),
-            Times.Never);
-    }
-
-    [Fact]
-    public async Task Handle_WithMultipleValidationFailures_ReturnsAllValidationErrorsAndDoesNotUseRepository()
-    {
-        var validatorMock = new Mock<IValidator<CreateCommentCommand>>();
-
-        var validationResult = new ValidationResult(
-        [
-            new ValidationFailure(
-                nameof(CreateCommentCommand.UserName),
-                "User name is required.")
-            {
-                ErrorCode = "Comments.UserName.Required"
-            },
-            new ValidationFailure(
-                nameof(CreateCommentCommand.Email),
-                "Email is required.")
-            {
-                ErrorCode = "Comments.Email.Required"
-            }
-        ]);
-
-        validatorMock
-            .Setup(validator => validator.ValidateAsync(
-                It.IsAny<CreateCommentCommand>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(validationResult);
-
-        var handler = new CreateCommentCommandHandler(
-            _commentRepositoryMock.Object,
-            validatorMock.Object);
-
-        var command = new CreateCommentCommand(
-            string.Empty,
-            string.Empty,
-            null,
-            "Test message",
-            null);
-
-        var result = await handler.Handle(
-            command,
-            CancellationToken.None);
-
-        Assert.True(result.IsError);
-        Assert.Collection(
-            result.Errors,
-            error =>
-            {
-                Assert.Equal("Comments.UserName.Required", error.Code);
-                Assert.Equal(ErrorType.Validation, error.Type);
-            },
-            error =>
-            {
-                Assert.Equal("Comments.Email.Required", error.Code);
-                Assert.Equal(ErrorType.Validation, error.Type);
-            });
-
-        validatorMock.Verify(
-            validator => validator.ValidateAsync(
-                command,
-                CancellationToken.None),
-            Times.Once);
 
         _commentRepositoryMock.Verify(
             repository => repository.ExistsAsync(
@@ -329,7 +190,6 @@ public sealed class CreateCommentCommandHandlerTests
     [Fact]
     public async Task Handle_WithValidCommand_ForwardsCancellationToken()
     {
-        var validatorMock = new Mock<IValidator<CreateCommentCommand>>();
         using var cancellationTokenSource = new CancellationTokenSource();
         var cancellationToken = cancellationTokenSource.Token;
 
@@ -340,33 +200,17 @@ public sealed class CreateCommentCommandHandlerTests
             "Test message",
             null);
 
-        validatorMock
-            .Setup(validator => validator.ValidateAsync(
-                command,
-                cancellationToken))
-            .ReturnsAsync(new ValidationResult());
-
         _commentRepositoryMock
             .Setup(repository => repository.AddAsync(
                 It.IsAny<Comment>(),
                 cancellationToken))
             .Returns(Task.CompletedTask);
 
-        var handler = new CreateCommentCommandHandler(
-            _commentRepositoryMock.Object,
-            validatorMock.Object);
-
-        var result = await handler.Handle(
+        var result = await _handler.Handle(
             command,
             cancellationToken);
 
         Assert.False(result.IsError);
-
-        validatorMock.Verify(
-            validator => validator.ValidateAsync(
-                command,
-                cancellationToken),
-            Times.Once);
 
         _commentRepositoryMock.Verify(
             repository => repository.AddAsync(

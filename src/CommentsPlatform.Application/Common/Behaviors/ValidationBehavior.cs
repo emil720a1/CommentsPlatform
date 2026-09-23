@@ -40,7 +40,7 @@ IPipelineBehavior<TRequest, TResponse>
         {
             var errors = failures
                 .Select(failure => Error.Validation(
-                    code: failure.PropertyName,
+                    code: failure.ErrorCode,
                     description: failure.ErrorMessage))
                 .ToList();
 

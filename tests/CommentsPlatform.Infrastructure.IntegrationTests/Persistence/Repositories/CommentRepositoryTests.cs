@@ -16,7 +16,8 @@ public sealed class CommentRepositoryTests : IAsyncLifetime
 
     public CommentRepositoryTests()
     {
-        _dbContainer = new MsSqlBuilder()
+        _dbContainer = new MsSqlBuilder(
+                "mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04")
             .Build();
     }
 

@@ -1,5 +1,7 @@
 using CommentsPlatform.Api.Contracts.Comments;
+using CommentsPlatform.Api.Contracts.Comments.GetComments;
 using CommentsPlatform.Application.Features.Comments.Create;
+using CommentsPlatform.Application.Features.Comments.Queries.GetComments;
 using ErrorOr;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -38,5 +40,48 @@ public class CommentsController : ControllerBase
         }
 
         return StatusCode(StatusCodes.Status201Created, new CreateCommentResponse(result.Value));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetComments(
+        [FromQuery] GetCommentsRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new GetCommentsQuery(
+                request.Page,
+                request.PageSize,
+                request.SortBy,
+                request.SortDirection),
+            cancellationToken);
+
+        if (result.IsError)
+        {
+            return result.FirstError.Type switch
+            {
+                ErrorType.Validation => BadRequest(result.Errors),
+                _ => StatusCode(StatusCodes.Status500InternalServerError)
+            };
+        }
+
+        var page = result.Value;
+
+        var comments = page.Items
+            .Select(comment => new CommentResponse(
+                comment.Id,
+                comment.UserName,
+                comment.HomePage,
+                comment.CreatedAt,
+                comment.Message))
+            .ToList();
+
+        return Ok(new GetCommentsResponse(
+            comments,
+            page.Page,
+            page.PageSize,
+            page.TotalCount,
+            page.TotalPages,
+            page.HasPreviousPage,
+            page.HasNextPage));
     }
 }

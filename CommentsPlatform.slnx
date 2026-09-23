@@ -6,6 +6,7 @@
     <Project Path="src/CommentsPlatform.Infrastructure/CommentsPlatform.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/CommentsPlatform.Api.IntegrationTests/CommentsPlatform.Api.IntegrationTests.csproj" />
     <Project Path="tests/CommentsPlatform.Api.UnitTests/CommentsPlatform.Api.UnitTests.csproj" />
     <Project Path="tests/CommentsPlatform.Application.UnitTests/CommentsPlatform.Application.UnitTests.csproj" />
     <Project Path="tests/CommentsPlatform.Domain.UnitTests/CommentsPlatform.Domain.UnitTests.csproj" />

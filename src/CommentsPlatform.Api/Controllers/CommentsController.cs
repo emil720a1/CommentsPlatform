@@ -93,7 +93,10 @@ public class CommentsController : ControllerBase
         return sortBy switch
         {
             CommentSortField.CreatedAt => ApplicationCommentSortBy.CreatedAt,
-            _ => (ApplicationCommentSortBy)(int)sortBy
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(sortBy),
+                sortBy,
+                "Unsupported comment sort field.")
         };
     }
 
@@ -104,7 +107,10 @@ public class CommentsController : ControllerBase
         {
             CommentSortOrder.Ascending => ApplicationSortDirection.Ascending,
             CommentSortOrder.Descending => ApplicationSortDirection.Descending,
-            _ => (ApplicationSortDirection)(int)sortDirection
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(sortDirection),
+                sortDirection,
+                "Unsupported comment sort direction.")
         };
     }
 }

@@ -114,8 +114,8 @@ public class CommentsControllerTests
         var request = new GetCommentsRequest(
             Page: 2,
             PageSize: 10,
-            SortBy: CommentSortBy.CreatedAt,
-            SortDirection: SortDirection.Ascending);
+            SortBy: CommentSortField.CreatedAt,
+            SortDirection: CommentSortOrder.Ascending);
         using var cancellationTokenSource = new CancellationTokenSource();
         var cancellationToken = cancellationTokenSource.Token;
         var commentId = Guid.NewGuid();
@@ -139,8 +139,8 @@ public class CommentsControllerTests
                 It.Is<GetCommentsQuery>(query =>
                     query.Page == request.Page &&
                     query.PageSize == request.PageSize &&
-                    query.SortBy == request.SortBy &&
-                    query.SortDirection == request.SortDirection),
+                    query.SortBy == CommentSortBy.CreatedAt &&
+                    query.SortDirection == SortDirection.Ascending),
                 cancellationToken))
             .ReturnsAsync(expectedResult);
 
@@ -168,8 +168,8 @@ public class CommentsControllerTests
                 It.Is<GetCommentsQuery>(query =>
                     query.Page == request.Page &&
                     query.PageSize == request.PageSize &&
-                    query.SortBy == request.SortBy &&
-                    query.SortDirection == request.SortDirection),
+                    query.SortBy == CommentSortBy.CreatedAt &&
+                    query.SortDirection == SortDirection.Ascending),
                 cancellationToken),
             Times.Once);
     }

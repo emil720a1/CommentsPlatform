@@ -5,6 +5,8 @@ using CommentsPlatform.Application.Features.Comments.Queries.GetComments;
 using ErrorOr;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using ApplicationCommentSortBy = CommentsPlatform.Application.Features.Comments.Queries.GetComments.CommentSortBy;
+using ApplicationSortDirection = CommentsPlatform.Application.Features.Comments.Queries.GetComments.SortDirection;
 
 namespace CommentsPlatform.Api.Controllers;
 
@@ -51,8 +53,8 @@ public class CommentsController : ControllerBase
             new GetCommentsQuery(
                 request.Page,
                 request.PageSize,
-                request.SortBy,
-                request.SortDirection),
+                MapSortBy(request.SortBy),
+                MapSortDirection(request.SortDirection)),
             cancellationToken);
 
         if (result.IsError)
@@ -83,5 +85,26 @@ public class CommentsController : ControllerBase
             page.TotalPages,
             page.HasPreviousPage,
             page.HasNextPage));
+    }
+
+    private static ApplicationCommentSortBy MapSortBy(
+        CommentSortField sortBy)
+    {
+        return sortBy switch
+        {
+            CommentSortField.CreatedAt => ApplicationCommentSortBy.CreatedAt,
+            _ => (ApplicationCommentSortBy)(int)sortBy
+        };
+    }
+
+    private static ApplicationSortDirection MapSortDirection(
+        CommentSortOrder sortDirection)
+    {
+        return sortDirection switch
+        {
+            CommentSortOrder.Ascending => ApplicationSortDirection.Ascending,
+            CommentSortOrder.Descending => ApplicationSortDirection.Descending,
+            _ => (ApplicationSortDirection)(int)sortDirection
+        };
     }
 }

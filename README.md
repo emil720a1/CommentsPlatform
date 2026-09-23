@@ -47,7 +47,10 @@ src/
 
 tests/
 ├── CommentsPlatform.Domain.UnitTests
-└── CommentsPlatform.Application.UnitTests
+├── CommentsPlatform.Application.UnitTests
+├── CommentsPlatform.Api.UnitTests
+├── CommentsPlatform.Infrastructure.IntegrationTests
+└── CommentsPlatform.Api.IntegrationTests
 ```
 
 ### Layer Responsibilities
@@ -89,16 +92,39 @@ The project is currently under development.
 - initial CQRS comment creation use case;
 - application unit tests;
 - Entity Framework Core persistence mappings;
-- local SQL Server Docker Compose configuration.
+- local SQL Server Docker Compose configuration;
+- backend unit and integration test projects;
+- SQL Server Testcontainers integration testing.
 
 ### Planned
 
 - initial database migration verification;
 - repository implementations;
 - API endpoints;
-- integration tests;
 - React frontend;
 - CI and SonarCloud analysis.
+
+## Testing
+
+The backend uses xUnit for unit and integration tests.
+
+Run the complete test suite:
+
+```bash
+dotnet test CommentsPlatform.slnx
+```
+
+Generate code coverage in Cobertura format:
+
+```bash
+dotnet test CommentsPlatform.slnx \
+  --settings coverage.runsettings \
+  --collect:"XPlat Code Coverage"
+```
+
+Integration tests require Docker because they run Microsoft SQL Server through Testcontainers.
+
+Detailed test project responsibilities, conventions, database isolation rules, and commands are documented in [tests/README.md](tests/README.md).
 
 ## Local SQL Server
 

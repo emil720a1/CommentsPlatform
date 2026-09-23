@@ -41,7 +41,8 @@ public sealed class GetCommentsQueryValidatorTests
 
         var result = _validator.TestValidate(query);
 
-        result.ShouldHaveValidationErrorFor(q => q.Page);
+        result.ShouldHaveValidationErrorFor(q => q.Page)
+            .WithErrorCode("Comments.Page.Invalid");
     }
 
     [Theory]
@@ -57,7 +58,8 @@ public sealed class GetCommentsQueryValidatorTests
             SortDirection: SortDirection.Descending);
 
         var result = _validator.TestValidate(query);
-        result.ShouldHaveValidationErrorFor(q => q.PageSize);
+        result.ShouldHaveValidationErrorFor(q => q.PageSize)
+            .WithErrorCode("Comments.PageSize.Invalid");
     }
 
     [Fact]
@@ -70,7 +72,8 @@ public sealed class GetCommentsQueryValidatorTests
             SortDirection: SortDirection.Descending);
 
         var result = _validator.TestValidate(query);
-        result.ShouldHaveValidationErrorFor(q => q.PageSize);
+        result.ShouldHaveValidationErrorFor(q => q.PageSize)
+            .WithErrorCode("Comments.PageSize.Invalid");
     }
 
     [Fact]
@@ -79,7 +82,8 @@ public sealed class GetCommentsQueryValidatorTests
         var query = new GetCommentsQuery(1, 50, (CommentSortBy)999, SortDirection.Descending);
 
         var result = _validator.TestValidate(query);
-        result.ShouldHaveValidationErrorFor(q => q.SortBy);
+        result.ShouldHaveValidationErrorFor(q => q.SortBy)
+            .WithErrorCode("Comments.SortBy.Invalid");
     }
 
     [Fact]
@@ -89,7 +93,8 @@ public sealed class GetCommentsQueryValidatorTests
 
         var result = _validator.TestValidate(query);
 
-        result.ShouldHaveValidationErrorFor(q => q.SortDirection);
+        result.ShouldHaveValidationErrorFor(q => q.SortDirection)
+            .WithErrorCode("Comments.SortDirection.Invalid");
     }
 
     [Fact]

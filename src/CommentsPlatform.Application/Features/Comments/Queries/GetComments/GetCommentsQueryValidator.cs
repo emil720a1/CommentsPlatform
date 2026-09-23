@@ -7,17 +7,21 @@ public sealed class GetCommentsQueryValidator : AbstractValidator<GetCommentsQue
     public GetCommentsQueryValidator()
     {
         RuleFor(q => q.Page)
-        .GreaterThan(0);
-
+            .GreaterThan(0)
+            .WithErrorCode("Comments.Page.Invalid");
 
         RuleFor(q => q.PageSize)
-        .GreaterThan(0)
-        .LessThanOrEqualTo(100);
+            .GreaterThan(0)
+            .WithErrorCode("Comments.PageSize.Invalid")
+            .LessThanOrEqualTo(100)
+            .WithErrorCode("Comments.PageSize.Invalid");
 
         RuleFor(q => q.SortBy)
-            .IsInEnum();
+            .IsInEnum()
+            .WithErrorCode("Comments.SortBy.Invalid");
 
         RuleFor(q => q.SortDirection)
-            .IsInEnum();
+            .IsInEnum()
+            .WithErrorCode("Comments.SortDirection.Invalid");
     }
 }

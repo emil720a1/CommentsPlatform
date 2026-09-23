@@ -224,6 +224,29 @@ public class CommentsControllerTests
             statusCodeResult.StatusCode);
     }
 
+    [Theory]
+    [InlineData(999, (int)CommentSortOrder.Descending)]
+    [InlineData((int)CommentSortField.CreatedAt, 999)]
+    public async Task GetComments_WithUnsupportedSorting_ReturnsBadRequestWithoutDispatchingQuery(
+        int sortBy,
+        int sortDirection)
+    {
+        var request = new GetCommentsRequest(
+            SortBy: (CommentSortField)sortBy,
+            SortDirection: (CommentSortOrder)sortDirection);
+
+        var result = await _controller.GetComments(
+            request,
+            CancellationToken.None);
+
+        Assert.IsType<BadRequestResult>(result);
+
+        _senderMock.Verify(sender => sender.Send(
+                It.IsAny<GetCommentsQuery>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
     [Fact]
     public async Task GetComments_WithDefaultRequest_SendsQueryWithDefaultParameters()
     {

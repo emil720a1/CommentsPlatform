@@ -49,12 +49,18 @@ public class CommentsController : ControllerBase
         [FromQuery] GetCommentsRequest request,
         CancellationToken cancellationToken)
     {
+        if (!TryMapSortBy(request.SortBy, out var sortBy) ||
+            !TryMapSortDirection(request.SortDirection, out var sortDirection))
+        {
+            return BadRequest();
+        }
+
         var result = await _sender.Send(
             new GetCommentsQuery(
                 request.Page,
                 request.PageSize,
-                MapSortBy(request.SortBy),
-                MapSortDirection(request.SortDirection)),
+                sortBy,
+                sortDirection),
             cancellationToken);
 
         if (result.IsError)
@@ -87,30 +93,39 @@ public class CommentsController : ControllerBase
             page.HasNextPage));
     }
 
-    private static ApplicationCommentSortBy MapSortBy(
-        CommentSortField sortBy)
+    private static bool TryMapSortBy(
+        CommentSortField sortBy,
+        out ApplicationCommentSortBy mappedSortBy)
     {
-        return sortBy switch
+        switch (sortBy)
         {
-            CommentSortField.CreatedAt => ApplicationCommentSortBy.CreatedAt,
-            _ => throw new ArgumentOutOfRangeException(
-                nameof(sortBy),
-                sortBy,
-                "Unsupported comment sort field.")
-        };
+            case CommentSortField.CreatedAt:
+                mappedSortBy = ApplicationCommentSortBy.CreatedAt;
+                return true;
+
+            default:
+                mappedSortBy = default;
+                return false;
+        }
     }
 
-    private static ApplicationSortDirection MapSortDirection(
-        CommentSortOrder sortDirection)
+    private static bool TryMapSortDirection(
+        CommentSortOrder sortDirection,
+        out ApplicationSortDirection mappedSortDirection)
     {
-        return sortDirection switch
+        switch (sortDirection)
         {
-            CommentSortOrder.Ascending => ApplicationSortDirection.Ascending,
-            CommentSortOrder.Descending => ApplicationSortDirection.Descending,
-            _ => throw new ArgumentOutOfRangeException(
-                nameof(sortDirection),
-                sortDirection,
-                "Unsupported comment sort direction.")
-        };
+            case CommentSortOrder.Ascending:
+                mappedSortDirection = ApplicationSortDirection.Ascending;
+                return true;
+
+            case CommentSortOrder.Descending:
+                mappedSortDirection = ApplicationSortDirection.Descending;
+                return true;
+
+            default:
+                mappedSortDirection = default;
+                return false;
+        }
     }
 }

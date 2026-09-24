@@ -8,6 +8,10 @@ public static class CreateCommentErrors
         "Comments.ParentNotFound",
         "The parent comment was not found.");
 
+    public static Error InvalidCaptcha => Error.Validation(
+        "Comments.Captcha.Invalid",
+        "CAPTCHA validation failed.");
+
     public static Error DomainValidation(string message)
     {
         return Error.Validation(

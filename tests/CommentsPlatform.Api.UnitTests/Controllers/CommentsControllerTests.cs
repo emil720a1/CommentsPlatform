@@ -27,6 +27,8 @@ public class CommentsControllerTests
     public async Task CreateComment_WhenCommandSucceeds_ReturnsCreatedResult()
     {
         var request = CreateValidRequest();
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var cancellationToken = cancellationTokenSource.Token;
 
         var expectedCommentId = Guid.NewGuid();
         ErrorOr<Guid> expectedResult = expectedCommentId;
@@ -36,7 +38,9 @@ public class CommentsControllerTests
             It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedResult);
 
-        var result = await _controller.CreateComment(request);
+        var result = await _controller.CreateComment(
+            request,
+            cancellationToken);
 
         var objectResult = Assert.IsType<ObjectResult>(result);
 
@@ -45,6 +49,18 @@ public class CommentsControllerTests
         var response = Assert.IsType<CreateCommentResponse>(objectResult.Value);
 
         Assert.Equal(expectedCommentId, response.Id);
+
+        _senderMock.Verify(
+            sender => sender.Send(
+                It.Is<CreateCommentCommand>(command =>
+                    command.UserName == request.UserName &&
+                    command.Email == request.Email &&
+                    command.HomePage == request.HomePage &&
+                    command.Message == request.Message &&
+                    command.ParentCommentId == request.ParentCommentId &&
+                    command.CaptchaToken == request.CaptchaToken),
+                cancellationToken),
+            Times.Once);
     }
 
     [Fact]
@@ -58,7 +74,7 @@ public class CommentsControllerTests
             It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedError);
 
-        var result = await _controller.CreateComment(request);
+        var result = await _controller.CreateComment(request, CancellationToken.None);
 
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
 
@@ -81,7 +97,7 @@ public class CommentsControllerTests
             It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedError);
 
-        var result = await _controller.CreateComment(request);
+        var result = await _controller.CreateComment(request, CancellationToken.None);
 
         var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
         Assert.Equal(StatusCodes.Status404NotFound, notFoundResult.StatusCode);
@@ -102,7 +118,7 @@ public class CommentsControllerTests
             It.IsAny<CancellationToken>()))
                 .ReturnsAsync(unexpectedError);
 
-        var result = await _controller.CreateComment(request);
+        var result = await _controller.CreateComment(request, CancellationToken.None);
 
         var statusCodeResult = Assert.IsType<StatusCodeResult>(result);
         Assert.Equal(StatusCodes.Status500InternalServerError, statusCodeResult.StatusCode);
@@ -294,7 +310,7 @@ public class CommentsControllerTests
             "email@example.com",
             null,
             "message",
-            null
-        );
+            null,
+            "valid-captcha-token");
     }
 }

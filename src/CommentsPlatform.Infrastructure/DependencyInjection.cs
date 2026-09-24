@@ -1,6 +1,8 @@
 using CommentsPlatform.Application.Common.Abstractions.Persistence;
+using CommentsPlatform.Application.Common.Abstractions.Security;
 using CommentsPlatform.Infrastructure.Persistence;
 using CommentsPlatform.Infrastructure.Persistence.Repositories;
+using CommentsPlatform.Infrastructure.Security.CloudflareTurnstile;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,6 +28,26 @@ public static class DependencyInjection
             options.UseSqlServer(connectionString));
 
         services.AddScoped<ICommentRepository, CommentRepository>();
+
+        services.AddOptions<CloudflareTurnstileOptions>()
+            .Bind(configuration.GetSection(
+                CloudflareTurnstileOptions.SectionName))
+            .Validate(
+                options => !string.IsNullOrWhiteSpace(options.SecretKey),
+                "Cloudflare Turnstile secret key is required.")
+            .Validate(options => Uri.TryCreate(
+                options.VerificationUrl,
+                UriKind.Absolute,
+                out _),
+                "Cloudflare Turnstile verification URL must be absolute.")
+            .Validate(
+                options => options.TimeoutSeconds > 0,
+                "Cloudflare Turnstile timeout must be greater than zero.")
+            .ValidateOnStart();
+
+        services.AddHttpClient<
+            ICaptchaValidator,
+            CloudflareTurnstileValidator>();
 
         return services;
     }

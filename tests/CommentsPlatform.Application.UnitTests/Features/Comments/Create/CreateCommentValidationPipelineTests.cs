@@ -32,7 +32,8 @@ public sealed class CreateCommentValidationPipelineTests
             "user@example.com",
             "https://example.com/",
             "Test message",
-            null);
+            null,
+            "valid-captcha-token");
 
         var result = await sender.Send(
             command,

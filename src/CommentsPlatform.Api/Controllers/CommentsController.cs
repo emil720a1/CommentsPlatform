@@ -22,9 +22,19 @@ public class CommentsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> CreateComment([FromBody] CreateCommentRequest request)
+    public async Task<IActionResult> CreateComment(
+        [FromBody] CreateCommentRequest request,
+        CancellationToken cancellationToken)
     {
-        var result = await _sender.Send(new CreateCommentCommand(request.UserName, request.Email, request.HomePage, request.Message, request.ParentCommentId));
+        var result = await _sender.Send(
+            new CreateCommentCommand(
+                request.UserName,
+                request.Email,
+                request.HomePage,
+                request.Message,
+                request.ParentCommentId,
+                request.CaptchaToken),
+            cancellationToken);
 
         if (result.IsError)
         {

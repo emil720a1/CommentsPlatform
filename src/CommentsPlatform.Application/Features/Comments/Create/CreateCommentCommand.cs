@@ -8,4 +8,5 @@ public sealed record CreateCommentCommand(
     string Email,
     string? HomePage,
     string Message,
-    Guid? ParentCommentId) : IRequest<ErrorOr<Guid>>;
+    Guid? ParentCommentId,
+    string CaptchaToken) : IRequest<ErrorOr<Guid>>;

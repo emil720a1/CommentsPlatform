@@ -1,4 +1,5 @@
 using CommentsPlatform.Application.Common.Abstractions.Persistence;
+using CommentsPlatform.Application.Common.Abstractions.Security;
 using CommentsPlatform.Domain;
 using ErrorOr;
 using MediatR;
@@ -9,17 +10,29 @@ public sealed class CreateCommentCommandHandler
     : IRequestHandler<CreateCommentCommand, ErrorOr<Guid>>
 {
     private readonly ICommentRepository _commentRepository;
+    private readonly ICaptchaValidator _captchaValidator;
 
     public CreateCommentCommandHandler(
-        ICommentRepository commentRepository)
+        ICommentRepository commentRepository,
+        ICaptchaValidator captchaValidator)
     {
         _commentRepository = commentRepository;
+        _captchaValidator = captchaValidator;
     }
 
     public async Task<ErrorOr<Guid>> Handle(
         CreateCommentCommand request,
         CancellationToken cancellationToken)
     {
+        var isCaptchaValid = await _captchaValidator.IsValidAsync(
+            request.CaptchaToken,
+            cancellationToken);
+
+        if (!isCaptchaValid)
+        {
+            return CreateCommentErrors.InvalidCaptcha;
+        }
+
         if (request.ParentCommentId.HasValue)
         {
             var parentExists = await _commentRepository.ExistsAsync(

@@ -9,7 +9,7 @@
     <DataCollectors>
       <DataCollector friendlyName="XPlat Code Coverage">
         <Configuration>
-          <Format>cobertura</Format>
+          <Format>opencover</Format>
           <IncludeTestAssembly>false</IncludeTestAssembly>
           <Exclude>[*.UnitTests]*,[*.IntegrationTests]*</Exclude>
           <ExcludeByFile>**/Migrations/*.cs,**/*.g.cs,**/*.Designer.cs</ExcludeByFile>

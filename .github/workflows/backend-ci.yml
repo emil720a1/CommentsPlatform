@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: backend-ci-${{ github.workflow }}-${{ github.ref }}
@@ -17,21 +18,44 @@ concurrency:
 
 jobs:
   build:
-    name: Restore and build
+    name: Build, test, and analyze
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: zulu
+          java-version: 21
 
       - name: Set up .NET SDK
         uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
 
+      - name: Restore .NET tools
+        run: dotnet tool restore
+
       - name: Restore dependencies
         run: dotnet restore CommentsPlatform.slnx
+
+      - name: Begin SonarCloud analysis
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >
+          dotnet sonarscanner begin
+          /k:"emil720a1_CommentsPlatform"
+          /o:"emil720a1"
+          /d:sonar.token="${SONAR_TOKEN}"
+          /d:sonar.cs.opencover.reportsPaths="TestResults/Unit/**/coverage.opencover.xml"
+          /d:sonar.cs.vstest.reportsPaths="TestResults/Unit/*.trx"
+          /d:sonar.exclusions="**/bin/**,**/obj/**,**/Migrations/**,**/*.g.cs,**/*.Designer.cs,TestResults/**"
 
       - name: Build solution
         run: >
@@ -39,50 +63,45 @@ jobs:
           --configuration Release
           --no-restore
 
-  unit-tests:
-    name: Unit tests
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    needs: build
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Set up .NET SDK
-        uses: actions/setup-dotnet@v6
-        with:
-          global-json-file: global.json
-
-      - name: Restore dependencies
-        run: dotnet restore CommentsPlatform.slnx
-
-      - name: Run Domain unit tests
+      - name: Run Domain unit tests with coverage
         run: >
           dotnet test
           tests/CommentsPlatform.Domain.UnitTests/CommentsPlatform.Domain.UnitTests.csproj
           --configuration Release
-          --no-restore
+          --no-build
+          --collect "XPlat Code Coverage"
+          --settings coverage.runsettings
           --logger "trx;LogFileName=domain-unit-tests.trx"
           --results-directory TestResults/Unit
 
-      - name: Run Application unit tests
+      - name: Run Application unit tests with coverage
         run: >
           dotnet test
           tests/CommentsPlatform.Application.UnitTests/CommentsPlatform.Application.UnitTests.csproj
           --configuration Release
-          --no-restore
+          --no-build
+          --collect "XPlat Code Coverage"
+          --settings coverage.runsettings
           --logger "trx;LogFileName=application-unit-tests.trx"
           --results-directory TestResults/Unit
 
-      - name: Run API unit tests
+      - name: Run API unit tests with coverage
         run: >
           dotnet test
           tests/CommentsPlatform.Api.UnitTests/CommentsPlatform.Api.UnitTests.csproj
           --configuration Release
-          --no-restore
+          --no-build
+          --collect "XPlat Code Coverage"
+          --settings coverage.runsettings
           --logger "trx;LogFileName=api-unit-tests.trx"
           --results-directory TestResults/Unit
+
+      - name: End SonarCloud analysis
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >
+          dotnet sonarscanner end
+          /d:sonar.token="${SONAR_TOKEN}"
 
       - name: Upload unit test results
         if: failure()

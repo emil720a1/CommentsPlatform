@@ -213,3 +213,30 @@ feature branch → dev → main
 - `dev` contains integrated development changes;
 - feature branches are created from `dev`;
 - pull requests are opened from feature branches into `dev`.
+
+## Continuous Integration
+
+The repository uses GitHub Actions to validate backend changes.
+
+The backend CI workflow runs automatically:
+
+- for pull requests targeting the `dev` branch;
+- for pushes to the `dev` branch.
+
+The workflow performs the following checks:
+
+- restores .NET dependencies;
+- builds the complete solution in the `Release` configuration;
+- runs Domain unit tests;
+- runs Application unit tests;
+- runs API unit tests;
+- runs Infrastructure integration tests;
+- runs API integration tests.
+
+Integration tests use SQL Server Testcontainers and do not depend on the local `docker-compose.yml` file or local `.env` configuration.
+
+When tests fail, their TRX result files are uploaded as GitHub Actions artifacts for troubleshooting.
+
+The workflow uses the .NET SDK version configured in `global.json`.
+
+SonarCloud analysis and quality gates will be added in separate tasks.

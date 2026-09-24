@@ -239,4 +239,75 @@ When tests fail, their TRX result files are uploaded as GitHub Actions artifacts
 
 The workflow uses the .NET SDK version configured in `global.json`.
 
-SonarCloud analysis and quality gates will be added in separate tasks.
+## SonarCloud Analysis
+
+The backend CI workflow performs SonarQube Cloud analysis for:
+
+- pull requests targeting the `dev` branch;
+- pushes to the `dev` branch.
+
+The analysis covers the backend source and relevant test projects. It reports:
+
+- bugs;
+- vulnerabilities;
+- security hotspots;
+- code smells;
+- duplicated code;
+- maintainability issues;
+- unit test results;
+- code coverage.
+
+Generated files, Entity Framework Core migrations, build output, and temporary test results are excluded where appropriate.
+
+Unit test coverage is generated in the OpenCover format and imported into SonarQube Cloud.
+
+### Configuration
+
+The SonarQube Cloud project uses:
+
+```text
+Organization key: emil720a1
+Project key: emil720a1_CommentsPlatform
+```
+
+GitHub Actions requires the following repository secret:
+
+```text
+SONAR_TOKEN
+```
+
+The token must be stored in GitHub repository secrets and must never be committed to the repository or written directly into the workflow.
+
+Automatic analysis must remain disabled because the repository uses CI-based analysis through GitHub Actions.
+
+### Local Verification
+
+Restore the repository's local .NET tools:
+
+```bash
+dotnet tool restore
+```
+
+Build the solution:
+
+```bash
+dotnet build CommentsPlatform.slnx --configuration Release
+```
+
+Generate a local OpenCover report:
+
+```bash
+dotnet test \
+  tests/CommentsPlatform.Domain.UnitTests/CommentsPlatform.Domain.UnitTests.csproj \
+  --configuration Release \
+  --no-build \
+  --collect "XPlat Code Coverage" \
+  --settings coverage.runsettings \
+  --results-directory TestResults/Unit
+```
+
+Generated coverage reports are stored under `TestResults` and must not be committed.
+
+Uploading a local analysis to SonarQube Cloud requires a valid personal token. The token must be supplied through an environment variable and must not be stored in source-controlled files.
+
+Quality gate configuration and pull request blocking rules are handled in a separate task.

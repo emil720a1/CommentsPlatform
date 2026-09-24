@@ -35,11 +35,14 @@ public static class DependencyInjection
             .Validate(
                 options => !string.IsNullOrWhiteSpace(options.SecretKey),
                 "Cloudflare Turnstile secret key is required.")
-            .Validate(options => Uri.TryCreate(
-                options.VerificationUrl,
-                UriKind.Absolute,
-                out _),
-                "Cloudflare Turnstile verification URL must be absolute.")
+            .Validate(
+                options =>
+                    Uri.TryCreate(
+                        options.VerificationUrl,
+                        UriKind.Absolute,
+                        out var verificationUri) &&
+                    verificationUri.Scheme == Uri.UriSchemeHttps,
+                "Cloudflare Turnstile verification URL must use HTTPS.")
             .Validate(
                 options => options.TimeoutSeconds > 0,
                 "Cloudflare Turnstile timeout must be greater than zero.")

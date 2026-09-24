@@ -280,6 +280,35 @@ The token must be stored in GitHub repository secrets and must never be committe
 
 Automatic analysis must remain disabled because the repository uses CI-based analysis through GitHub Actions.
 
+### Quality Gate
+
+The project uses the built-in `Sonar way` Quality Gate.
+
+The current SonarQube Cloud plan does not support custom Quality Gates, so the built-in gate is used with its standard conditions for new code:
+
+- no new issues are introduced;
+- reliability rating is `A`;
+- security rating is `A`;
+- maintainability rating is `A`;
+- all new Security Hotspots are reviewed;
+- coverage on new code is at least 80%;
+- duplicated lines on new code do not exceed 3%.
+
+SonarQube Cloud ignores the coverage and duplication conditions until a change contains at least 20 new lines.
+
+The project uses a 30-day new code definition for long-lived branch analysis. Pull request analysis evaluates code changed relative to the target branch.
+
+The CI workflow waits up to 300 seconds for the Quality Gate result. A failed or unavailable Quality Gate causes the `Build, test, and analyze` job to fail.
+
+The `dev` branch is protected by an active GitHub ruleset. Pull requests targeting `dev` require the following checks to pass:
+
+- `Build, test, and analyze`;
+- `Infrastructure integration tests`;
+- `API integration tests`;
+- `SonarCloud Code Analysis`.
+
+The protected branch must be up to date before merging. Direct changes, force pushes, branch deletion, and merging with unresolved conversations are not allowed.
+
 ### Local Verification
 
 Restore the repository's local .NET tools:

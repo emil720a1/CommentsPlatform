@@ -56,6 +56,8 @@ jobs:
           /d:sonar.cs.opencover.reportsPaths="TestResults/Unit/**/coverage.opencover.xml"
           /d:sonar.cs.vstest.reportsPaths="TestResults/Unit/*.trx"
           /d:sonar.exclusions="**/bin/**,**/obj/**,**/Migrations/**,**/*.g.cs,**/*.Designer.cs,TestResults/**"
+          /d:sonar.qualitygate.wait=true
+          /d:sonar.qualitygate.timeout=300
 
       - name: Build solution
         run: >

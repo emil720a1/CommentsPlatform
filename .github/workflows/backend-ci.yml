@@ -1,0 +1,166 @@
+name: Backend CI
+
+on:
+  pull_request:
+    branches:
+      - dev
+  push:
+    branches:
+      - dev
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Restore and build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Restore dependencies
+        run: dotnet restore CommentsPlatform.slnx
+
+      - name: Build solution
+        run: >
+          dotnet build CommentsPlatform.slnx
+          --configuration Release
+          --no-restore
+
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    needs: build
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Restore dependencies
+        run: dotnet restore CommentsPlatform.slnx
+
+      - name: Run Domain unit tests
+        run: >
+          dotnet test
+          tests/CommentsPlatform.Domain.UnitTests/CommentsPlatform.Domain.UnitTests.csproj
+          --configuration Release
+          --no-restore
+          --logger "trx;LogFileName=domain-unit-tests.trx"
+          --results-directory TestResults/Unit
+
+      - name: Run Application unit tests
+        run: >
+          dotnet test
+          tests/CommentsPlatform.Application.UnitTests/CommentsPlatform.Application.UnitTests.csproj
+          --configuration Release
+          --no-restore
+          --logger "trx;LogFileName=application-unit-tests.trx"
+          --results-directory TestResults/Unit
+
+      - name: Run API unit tests
+        run: >
+          dotnet test
+          tests/CommentsPlatform.Api.UnitTests/CommentsPlatform.Api.UnitTests.csproj
+          --configuration Release
+          --no-restore
+          --logger "trx;LogFileName=api-unit-tests.trx"
+          --results-directory TestResults/Unit
+
+      - name: Upload unit test results
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: unit-test-results
+          path: TestResults/Unit/*.trx
+          if-no-files-found: warn
+          retention-days: 7
+
+  infrastructure-integration-tests:
+    name: Infrastructure integration tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    needs: build
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Restore dependencies
+        run: dotnet restore CommentsPlatform.slnx
+
+      - name: Run Infrastructure integration tests
+        run: >
+          dotnet test
+          tests/CommentsPlatform.Infrastructure.IntegrationTests/CommentsPlatform.Infrastructure.IntegrationTests.csproj
+          --configuration Release
+          --no-restore
+          --logger "trx;LogFileName=infrastructure-integration-tests.trx"
+          --results-directory TestResults/Integration
+
+      - name: Upload Infrastructure integration test results
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: infrastructure-integration-test-results
+          path: TestResults/Integration/*.trx
+          if-no-files-found: warn
+          retention-days: 7
+
+  api-integration-tests:
+    name: API integration tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    needs: build
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Restore dependencies
+        run: dotnet restore CommentsPlatform.slnx
+
+      - name: Run API integration tests
+        run: >
+          dotnet test
+          tests/CommentsPlatform.Api.IntegrationTests/CommentsPlatform.Api.IntegrationTests.csproj
+          --configuration Release
+          --no-restore
+          --logger "trx;LogFileName=api-integration-tests.trx"
+          --results-directory TestResults/Integration
+
+      - name: Upload API integration test results
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: api-integration-test-results
+          path: TestResults/Integration/*.trx
+          if-no-files-found: warn
+          retention-days: 7

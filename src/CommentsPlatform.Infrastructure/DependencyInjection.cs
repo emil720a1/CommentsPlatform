@@ -1,9 +1,11 @@
 using CommentsPlatform.Application.Common.Abstractions.Persistence;
 using CommentsPlatform.Application.Common.Abstractions.Security;
+using CommentsPlatform.Application.Common.Abstractions.Storage;
 using CommentsPlatform.Infrastructure.Persistence;
 using CommentsPlatform.Infrastructure.Persistence.Repositories;
 using CommentsPlatform.Infrastructure.Security.CloudflareTurnstile;
 using CommentsPlatform.Infrastructure.Security.HtmlSanitization;
+using CommentsPlatform.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -53,6 +55,16 @@ public static class DependencyInjection
         services.AddHttpClient<
             ICaptchaValidator,
             CloudflareTurnstileValidator>();
+
+        services.AddOptions<LocalFileStorageOptions>()
+            .Bind(configuration.GetSection(
+                LocalFileStorageOptions.SectionName))
+            .Validate(
+                options => !string.IsNullOrWhiteSpace(options.RootPath),
+                "File storage root path is required.")
+            .ValidateOnStart();
+
+        services.AddSingleton<IFileStorage, LocalFileStorage>();
 
         return services;
     }

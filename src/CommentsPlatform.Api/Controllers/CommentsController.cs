@@ -1,6 +1,8 @@
 using CommentsPlatform.Api.Common.Errors;
 using CommentsPlatform.Api.Contracts.Comments;
+using CommentsPlatform.Api.Contracts.Comments.Attachments;
 using CommentsPlatform.Api.Contracts.Comments.GetComments;
+using CommentsPlatform.Application.Features.Attachments.Upload;
 using CommentsPlatform.Application.Features.Comments.Create;
 using CommentsPlatform.Application.Features.Comments.Queries.GetComments;
 using ErrorOr;
@@ -43,6 +45,48 @@ public class CommentsController : ControllerBase
         }
 
         return StatusCode(StatusCodes.Status201Created, new CreateCommentResponse(result.Value));
+    }
+
+    [HttpPost("{commentId:guid}/attachments")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(6 * 1024 * 1024)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 6 * 1024 * 1024)]
+    [ProducesResponseType(
+        typeof(UploadAttachmentResponse),
+        StatusCodes.Status201Created)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status404NotFound)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> UploadAttachment(
+        Guid commentId,
+        [FromForm] UploadAttachmentRequest request,
+        CancellationToken cancellationToken)
+    {
+        await using var content = request.File.OpenReadStream();
+
+        var result = await _sender.Send(
+            new UploadAttachmentCommand(
+                commentId,
+                content,
+                request.File.FileName,
+                request.File.ContentType,
+                request.File.Length),
+            cancellationToken);
+
+        if (result.IsError)
+        {
+            return ApiErrorMapper.Map(result.Errors);
+        }
+
+        return StatusCode(
+            StatusCodes.Status201Created,
+            new UploadAttachmentResponse(result.Value));
     }
 
     [HttpGet]

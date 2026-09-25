@@ -33,6 +33,22 @@ public sealed class CommentRepository : ICommentRepository
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<Comment?> GetByIdAsync(
+        Guid commentId,
+        CancellationToken cancellationToken)
+    {
+        return await _dbContext.Comments
+            .Include(comment => comment.Attachments)
+            .SingleOrDefaultAsync(
+                comment => comment.Id == commentId,
+                cancellationToken);
+    }
+
+    public async Task SaveChangesAsync(CancellationToken cancellationToken)
+    {
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<PaginatedList<CommentDto>> GetTopLevelCommentsAsync(
         GetCommentsParameters parameters,
         CancellationToken cancellationToken)

@@ -10,8 +10,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace CommentsPlatform.Api.IntegrationTests.Endpoints.Comments;
 
+[Collection(ApiIntegrationTestCollection.Name)]
 public sealed class GetCommentsEndpointTests
-    : IClassFixture<CommentsPlatformWebApplicationFactory>
 {
     private static readonly DateTimeOffset SeedCreatedAt =
         new(2026, 9, 25, 10, 0, 0, TimeSpan.Zero);

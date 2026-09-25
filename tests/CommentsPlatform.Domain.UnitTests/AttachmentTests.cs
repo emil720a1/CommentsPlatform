@@ -15,6 +15,7 @@ public sealed class AttachmentTests
          storageKey: "attachments/document.pdf",
          contentType: "application/pdf",
          fileSizeBytes: 1024,
+         createdAt: CreatedAt,
          width: null,
          height: null
       );
@@ -25,6 +26,7 @@ public sealed class AttachmentTests
       Assert.Null(attachment.Width);
       Assert.Null(attachment.Height);
       Assert.Equal(TimeSpan.Zero, attachment.CreatedAt.Offset);
+      Assert.Equal(CreatedAt, attachment.CreatedAt);
       Assert.Equal("document.pdf", attachment.OriginalFileName);
       Assert.Equal("attachments/document.pdf", attachment.StorageKey);
       Assert.Equal("application/pdf", attachment.ContentType);
@@ -43,6 +45,7 @@ public sealed class AttachmentTests
          originalFileName: "photo.png",
          storageKey: "attachments/photo.png",
          contentType: "image/png",
+         createdAt: CreatedAt,
          fileSizeBytes: 2048,
          width: 1920,
          height: 1080);
@@ -69,6 +72,7 @@ public sealed class AttachmentTests
             originalFileName: invalidOriginalFileName!,
             storageKey: "attachments/photo.png",
             contentType: "image/png",
+            createdAt: CreatedAt,
             fileSizeBytes: 2048,
             width: 1920,
             height: 1080));
@@ -91,6 +95,7 @@ public sealed class AttachmentTests
             originalFileName: "photo.png",
             storageKey: invalidStorageKey!,
             contentType: "image/png",
+            createdAt: CreatedAt,
             fileSizeBytes: 2048,
             width: 1920,
             height: 1080));
@@ -113,6 +118,7 @@ public sealed class AttachmentTests
             originalFileName: "photo.png",
             storageKey: "attachments/photo.png",
             contentType: invalidContentType!,
+            createdAt: CreatedAt,
             fileSizeBytes: 2048,
             width: 1920,
             height: 1080));
@@ -134,6 +140,7 @@ public sealed class AttachmentTests
             originalFileName: "photo.png",
             storageKey: "attachments/photo.png",
             contentType: "image/png",
+            createdAt: CreatedAt,
             fileSizeBytes: invalidFileSizeBytes,
             width: 1920,
             height: 1080));
@@ -156,6 +163,7 @@ public sealed class AttachmentTests
             originalFileName: "photo.png",
             storageKey: "attachments/photo.png",
             contentType: "image/png",
+            createdAt: CreatedAt,
             fileSizeBytes: 2048,
             width: width,
             height: height));
@@ -180,6 +188,7 @@ public sealed class AttachmentTests
             originalFileName: "photo.png",
             storageKey: "attachments/photo.png",
             contentType: "image/png",
+            createdAt: CreatedAt,
             fileSizeBytes: 2048,
             width: width,
             height: height));
@@ -198,6 +207,7 @@ public sealed class AttachmentTests
          originalFileName: "document.pdf",
          storageKey: "attachments/document.pdf",
          contentType: "application/pdf",
+         createdAt: CreatedAt,
          fileSizeBytes: 1024,
          width: null,
          height: null);
@@ -212,6 +222,33 @@ public sealed class AttachmentTests
       var storedAttachment = Assert.Single(comment.Attachments);
 
       Assert.Same(attachment, storedAttachment);
+   }
+
+   [Fact]
+   public void AddAttachment_WithNonUtcCreationTime_StoresCreatedAtInUtc()
+   {
+      var comment = CreateComment();
+
+      var nonUtcCreatedAt = new DateTimeOffset(
+         2026,
+         9,
+         25,
+         12,
+         0,
+         0,
+         TimeSpan.FromHours(2));
+
+      var attachment = comment.AddAttachment(
+         originalFileName: "document.pdf",
+         storageKey: "attachments/document.pdf",
+         contentType: "application/pdf",
+         fileSizeBytes: 1024,
+         createdAt: nonUtcCreatedAt);
+
+      Assert.Equal(TimeSpan.Zero, attachment.CreatedAt.Offset);
+      Assert.Equal(
+         nonUtcCreatedAt.ToUniversalTime(),
+         attachment.CreatedAt);
    }
 
    private static Comment CreateComment()

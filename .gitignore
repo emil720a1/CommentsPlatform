@@ -44,6 +44,9 @@ build/
 *.log
 logs/
 
+# Local file storage
+uploads/
+
 # Local databases and SQL Server files
 *.mdf
 *.ndf

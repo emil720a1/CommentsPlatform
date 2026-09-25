@@ -1,8 +1,10 @@
 using CommentsPlatform.Api.Contracts.Comments;
+using CommentsPlatform.Api.Contracts.Comments.Attachments;
 using CommentsPlatform.Api.Contracts.Comments.GetComments;
 using CommentsPlatform.Api.Contracts.Common;
 using CommentsPlatform.Api.Controllers;
 using CommentsPlatform.Application.Common.Models;
+using CommentsPlatform.Application.Features.Attachments.Upload;
 using CommentsPlatform.Application.Features.Comments.Create;
 using CommentsPlatform.Application.Features.Comments.Queries.GetComments;
 using ErrorOr;
@@ -125,6 +127,155 @@ public class CommentsControllerTests
                 .ReturnsAsync(unexpectedError);
 
         var result = await _controller.CreateComment(request, CancellationToken.None);
+
+        var returnedErrors = AssertProblemDetails(
+            result,
+            StatusCodes.Status500InternalServerError,
+            "Internal server error",
+            "An unexpected error occurred.");
+        var error = Assert.Single(returnedErrors);
+
+        Assert.Equal("Server.Unexpected", error.Code);
+        Assert.Equal("An unexpected error occurred.", error.Description);
+    }
+
+    [Fact]
+    public async Task UploadAttachment_WhenCommandSucceeds_ReturnsCreatedResultAndMapsRequest()
+    {
+        byte[] fileContent = [1, 2, 3, 4];
+        await using var stream = new MemoryStream(fileContent);
+        var request = CreateUploadAttachmentRequest(
+            stream,
+            "image.png",
+            "image/png");
+        var commentId = Guid.NewGuid();
+        var attachmentId = Guid.NewGuid();
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var cancellationToken = cancellationTokenSource.Token;
+        ErrorOr<Guid> expectedResult = attachmentId;
+        UploadAttachmentCommand? capturedCommand = null;
+        var contentWasReadableDuringSend = false;
+
+        _senderMock
+            .Setup(sender => sender.Send(
+                It.IsAny<UploadAttachmentCommand>(),
+                cancellationToken))
+            .Callback((IRequest<ErrorOr<Guid>> requestMessage, CancellationToken _) =>
+            {
+                capturedCommand = Assert.IsType<UploadAttachmentCommand>(
+                    requestMessage);
+                contentWasReadableDuringSend = capturedCommand.Content.CanRead;
+            })
+            .ReturnsAsync(expectedResult);
+
+        var result = await _controller.UploadAttachment(
+            commentId,
+            request,
+            cancellationToken);
+
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status201Created, objectResult.StatusCode);
+
+        var response = Assert.IsType<UploadAttachmentResponse>(
+            objectResult.Value);
+        Assert.Equal(attachmentId, response.AttachmentId);
+        Assert.NotNull(capturedCommand);
+        Assert.True(contentWasReadableDuringSend);
+        Assert.Equal(commentId, capturedCommand.CommentId);
+        Assert.Equal(request.File.FileName, capturedCommand.OriginalFileName);
+        Assert.Equal(request.File.ContentType, capturedCommand.ContentType);
+        Assert.Equal(request.File.Length, capturedCommand.FileSizeBytes);
+
+        _senderMock.Verify(
+            sender => sender.Send(
+                It.IsAny<UploadAttachmentCommand>(),
+                cancellationToken),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task UploadAttachment_WhenValidationFails_ReturnsBadRequest()
+    {
+        await using var stream = new MemoryStream([1]);
+        var request = CreateUploadAttachmentRequest(
+            stream,
+            "malware.exe",
+            "application/executable");
+        var expectedError = Error.Validation(
+            "Attachments.ContentType.Unsupported",
+            "The attachment content type is not supported.");
+
+        _senderMock
+            .Setup(sender => sender.Send(
+                It.IsAny<UploadAttachmentCommand>(),
+                CancellationToken.None))
+            .ReturnsAsync(expectedError);
+
+        var result = await _controller.UploadAttachment(
+            Guid.NewGuid(),
+            request,
+            CancellationToken.None);
+
+        var returnedErrors = AssertProblemDetails(
+            result,
+            StatusCodes.Status400BadRequest,
+            "Validation error",
+            "One or more validation errors occurred.");
+        var error = Assert.Single(returnedErrors);
+
+        Assert.Equal(expectedError.Code, error.Code);
+        Assert.Equal(expectedError.Description, error.Description);
+    }
+
+    [Fact]
+    public async Task UploadAttachment_WhenCommentDoesNotExist_ReturnsNotFound()
+    {
+        await using var stream = new MemoryStream([1]);
+        var request = CreateUploadAttachmentRequest(
+            stream,
+            "image.png",
+            "image/png");
+
+        _senderMock
+            .Setup(sender => sender.Send(
+                It.IsAny<UploadAttachmentCommand>(),
+                CancellationToken.None))
+            .ReturnsAsync(UploadAttachmentErrors.CommentNotFound);
+
+        var result = await _controller.UploadAttachment(
+            Guid.NewGuid(),
+            request,
+            CancellationToken.None);
+
+        var returnedErrors = AssertProblemDetails(
+            result,
+            StatusCodes.Status404NotFound,
+            "Resource not found",
+            UploadAttachmentErrors.CommentNotFound.Description);
+        var error = Assert.Single(returnedErrors);
+
+        Assert.Equal(UploadAttachmentErrors.CommentNotFound.Code, error.Code);
+    }
+
+    [Fact]
+    public async Task UploadAttachment_WhenStorageFails_ReturnsSafeInternalServerError()
+    {
+        await using var stream = new MemoryStream([1]);
+        var request = CreateUploadAttachmentRequest(
+            stream,
+            "image.png",
+            "image/png");
+
+        _senderMock
+            .Setup(sender => sender.Send(
+                It.IsAny<UploadAttachmentCommand>(),
+                CancellationToken.None))
+            .ReturnsAsync(UploadAttachmentErrors.StorageFailure);
+
+        var result = await _controller.UploadAttachment(
+            Guid.NewGuid(),
+            request,
+            CancellationToken.None);
 
         var returnedErrors = AssertProblemDetails(
             result,
@@ -365,5 +516,27 @@ public class CommentsControllerTests
             "message",
             null,
             "valid-captcha-token");
+    }
+
+    private static UploadAttachmentRequest CreateUploadAttachmentRequest(
+        Stream content,
+        string fileName,
+        string contentType)
+    {
+        var file = new FormFile(
+            content,
+            baseStreamOffset: 0,
+            length: content.Length,
+            name: "File",
+            fileName: fileName)
+        {
+            Headers = new HeaderDictionary(),
+            ContentType = contentType
+        };
+
+        return new UploadAttachmentRequest
+        {
+            File = file
+        };
     }
 }

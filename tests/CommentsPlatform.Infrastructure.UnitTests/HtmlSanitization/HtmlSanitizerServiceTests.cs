@@ -95,4 +95,27 @@ public sealed class HtmlSanitizerServiceTests
             result,
             StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void Sanitize_WithImageOnError_RemovesUnsafeImage()
+    {
+        const string html =
+            """<p>Safe</p><img src="invalid" onerror="alert('xss')">""";
+
+        var result = _sanitizer.Sanitize(html);
+
+        Assert.Equal("<p>Safe</p>", result);
+        Assert.DoesNotContain(
+            "img",
+            result,
+            StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(
+            "onerror",
+            result,
+            StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(
+            "alert",
+            result,
+            StringComparison.OrdinalIgnoreCase);
+    }
 }

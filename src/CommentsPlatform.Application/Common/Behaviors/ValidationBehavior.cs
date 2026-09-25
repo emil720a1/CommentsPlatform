@@ -23,7 +23,7 @@ IPipelineBehavior<TRequest, TResponse>
     {
         if (!_validators.Any())
         {
-            return await next();
+            return await next(cancellationToken);
         }
 
         var context = new ValidationContext<TRequest>(request);
@@ -47,6 +47,6 @@ IPipelineBehavior<TRequest, TResponse>
             return (dynamic)errors;
         }
 
-        return await next();
+        return await next(cancellationToken);
     }
 }

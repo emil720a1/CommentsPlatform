@@ -46,6 +46,10 @@ public sealed class CommentsPlatformWebApplicationFactory : IAsyncLifetime
             .WithWebHostBuilder(builder =>
             {
                 builder.UseSetting(
+                    "ConnectionStrings:DefaultConnection",
+                    connectionString);
+
+                builder.UseSetting(
                     "CloudflareTurnstile:SecretKey",
                     "integration-test-secret");
 

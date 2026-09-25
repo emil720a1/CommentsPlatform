@@ -45,7 +45,8 @@ public sealed class Comment
         string email,
         string? homePage,
         string message,
-        Guid? parentCommentId)
+        Guid? parentCommentId,
+        DateTimeOffset createdAt)
     {
         if (string.IsNullOrWhiteSpace(userName))
         {
@@ -125,7 +126,7 @@ public sealed class Comment
             normalizedEmail,
             normalizedHomePage,
             message,
-            DateTimeOffset.UtcNow,
+            createdAt.ToUniversalTime(),
             parentCommentId);
     }
 

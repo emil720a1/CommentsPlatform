@@ -11,13 +11,16 @@ public sealed class CreateCommentCommandHandler
 {
     private readonly ICommentRepository _commentRepository;
     private readonly ICaptchaValidator _captchaValidator;
+    private readonly TimeProvider _timeProvider;
 
     public CreateCommentCommandHandler(
         ICommentRepository commentRepository,
-        ICaptchaValidator captchaValidator)
+        ICaptchaValidator captchaValidator,
+        TimeProvider timeProvider)
     {
         _commentRepository = commentRepository;
         _captchaValidator = captchaValidator;
+        _timeProvider = timeProvider;
     }
 
     public async Task<ErrorOr<Guid>> Handle(
@@ -53,7 +56,8 @@ public sealed class CreateCommentCommandHandler
                 request.Email,
                 request.HomePage,
                 request.Message,
-                request.ParentCommentId);
+                request.ParentCommentId,
+                _timeProvider.GetUtcNow());
         }
         catch (ArgumentException exception)
         {

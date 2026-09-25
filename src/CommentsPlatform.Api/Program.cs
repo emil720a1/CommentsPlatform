@@ -12,6 +12,7 @@ builder.Services
             ApiErrorMapper.Map(context.ModelState);
     });
 builder.Services.AddOpenApi();
+builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication();
 

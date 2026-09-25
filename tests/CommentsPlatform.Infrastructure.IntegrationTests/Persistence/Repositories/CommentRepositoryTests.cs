@@ -9,6 +9,9 @@ namespace CommentsPlatform.Infrastructure.IntegrationTests.Persistence.Repositor
 
 public sealed class CommentRepositoryTests : IAsyncLifetime
 {
+    private static readonly DateTimeOffset CreatedAt =
+        new(2026, 9, 25, 10, 0, 0, TimeSpan.Zero);
+
     private readonly MsSqlContainer _dbContainer;
 
     private ApplicationDbContext _dbContext = null!;
@@ -76,7 +79,8 @@ public sealed class CommentRepositoryTests : IAsyncLifetime
             "reply@example.com",
             null,
             "Reply message",
-            firstTopLevelComment.Id);
+            firstTopLevelComment.Id,
+            CreatedAt);
 
         _dbContext.Comments.AddRange(
             firstTopLevelComment,
@@ -135,9 +139,14 @@ public sealed class CommentRepositoryTests : IAsyncLifetime
     [Fact]
     public async Task GetTopLevelCommentsAsync_WithRequestedDirection_SortsByCreatedAt()
     {
-        var olderComment = CreateTopLevelComment("olderUser", "Older message");
-        await Task.Delay(TimeSpan.FromMilliseconds(10));
-        var newerComment = CreateTopLevelComment("newerUser", "Newer message");
+        var olderComment = CreateTopLevelComment(
+            "olderUser",
+            "Older message",
+            CreatedAt.AddMinutes(-1));
+        var newerComment = CreateTopLevelComment(
+            "newerUser",
+            "Newer message",
+            CreatedAt);
 
         _dbContext.Comments.AddRange(olderComment, newerComment);
         await _dbContext.SaveChangesAsync();
@@ -219,13 +228,15 @@ public sealed class CommentRepositoryTests : IAsyncLifetime
 
     private static Comment CreateTopLevelComment(
         string userName,
-        string message)
+        string message,
+        DateTimeOffset? createdAt = null)
     {
         return Comment.Create(
             userName,
             $"{userName}@example.com",
             null,
             message,
-            null);
+            null,
+            createdAt ?? CreatedAt);
     }
 }

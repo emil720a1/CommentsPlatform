@@ -3,6 +3,7 @@ using CommentsPlatform.Application.Common.Abstractions.Security;
 using CommentsPlatform.Infrastructure.Persistence;
 using CommentsPlatform.Infrastructure.Persistence.Repositories;
 using CommentsPlatform.Infrastructure.Security.CloudflareTurnstile;
+using CommentsPlatform.Infrastructure.Security.HtmlSanitization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,6 +29,7 @@ public static class DependencyInjection
             options.UseSqlServer(connectionString));
 
         services.AddScoped<ICommentRepository, CommentRepository>();
+        services.AddSingleton<IHtmlSanitizer, HtmlSanitizerService>();
 
         services.AddOptions<CloudflareTurnstileOptions>()
             .Bind(configuration.GetSection(

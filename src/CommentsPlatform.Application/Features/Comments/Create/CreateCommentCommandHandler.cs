@@ -12,14 +12,17 @@ public sealed class CreateCommentCommandHandler
     private readonly ICommentRepository _commentRepository;
     private readonly ICaptchaValidator _captchaValidator;
     private readonly TimeProvider _timeProvider;
+    private readonly IHtmlSanitizer _htmlSanitizer;
 
     public CreateCommentCommandHandler(
         ICommentRepository commentRepository,
         ICaptchaValidator captchaValidator,
+        IHtmlSanitizer htmlSanitizer,
         TimeProvider timeProvider)
     {
         _commentRepository = commentRepository;
         _captchaValidator = captchaValidator;
+        _htmlSanitizer = htmlSanitizer;
         _timeProvider = timeProvider;
     }
 
@@ -48,6 +51,8 @@ public sealed class CreateCommentCommandHandler
             }
         }
 
+        var sanitizedMessage = _htmlSanitizer.Sanitize(request.Message);
+
         Comment comment;
         try
         {
@@ -55,7 +60,7 @@ public sealed class CreateCommentCommandHandler
                 request.UserName,
                 request.Email,
                 request.HomePage,
-                request.Message,
+                sanitizedMessage,
                 request.ParentCommentId,
                 _timeProvider.GetUtcNow());
         }

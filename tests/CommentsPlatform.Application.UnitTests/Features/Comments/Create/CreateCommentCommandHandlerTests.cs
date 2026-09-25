@@ -16,12 +16,14 @@ public sealed class CreateCommentCommandHandlerTests
     private readonly Mock<ICaptchaValidator> _captchaValidatorMock;
     private readonly Mock<TimeProvider> _timeProviderMock;
     private readonly CreateCommentCommandHandler _handler;
+    private readonly Mock<IHtmlSanitizer> _htmlSanitizerMock;
 
     public CreateCommentCommandHandlerTests()
     {
         _commentRepositoryMock = new Mock<ICommentRepository>();
         _captchaValidatorMock = new Mock<ICaptchaValidator>();
         _timeProviderMock = new Mock<TimeProvider>();
+        _htmlSanitizerMock = new Mock<IHtmlSanitizer>();
 
         _captchaValidatorMock.Setup(validator => validator.IsValidAsync(
             It.IsAny<string>(),
@@ -35,7 +37,12 @@ public sealed class CreateCommentCommandHandlerTests
         _handler = new CreateCommentCommandHandler(
             _commentRepositoryMock.Object,
             _captchaValidatorMock.Object,
+            _htmlSanitizerMock.Object,
             _timeProviderMock.Object);
+
+        _htmlSanitizerMock
+            .Setup(sanitizer => sanitizer.Sanitize(It.IsAny<string>()))
+            .Returns((string message) => message);
     }
 
     [Fact]
@@ -339,6 +346,79 @@ public sealed class CreateCommentCommandHandlerTests
 
         Assert.Equal(CreateCommentErrors.InvalidCaptcha.Code, error.Code);
         Assert.NotEqual("Comments.DomainValidation", error.Code);
+
+        _commentRepositoryMock.Verify(
+            repository => repository.AddAsync(
+                It.IsAny<Comment>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WithUnsafeHtml_PersistsSanitizedMessage()
+    {
+        const string unsafeMessage =
+            "<p>Hello</p><script>alert('xss')</script>";
+        const string sanitizedMessage = "<p>Hello</p>";
+
+        var command = new CreateCommentCommand(
+            "user123",
+            "user@example.com",
+            null,
+            unsafeMessage,
+            null,
+            "valid-captcha-token");
+
+        _htmlSanitizerMock
+            .Setup(sanitizer => sanitizer.Sanitize(unsafeMessage))
+            .Returns(sanitizedMessage);
+
+        var result = await _handler.Handle(
+            command,
+            CancellationToken.None);
+
+        Assert.False(result.IsError);
+
+        _htmlSanitizerMock.Verify(
+            sanitizer => sanitizer.Sanitize(unsafeMessage),
+            Times.Once);
+
+        _commentRepositoryMock.Verify(
+            repository => repository.AddAsync(
+                It.Is<Comment>(comment =>
+                    comment.Message == sanitizedMessage),
+                CancellationToken.None),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenSanitizedMessageIsEmpty_ReturnsValidationErrorAndDoesNotPersist()
+    {
+        const string unsafeMessage =
+            "<script>alert('xss')</script>";
+
+        var command = new CreateCommentCommand(
+            "user123",
+            "user@example.com",
+            null,
+            unsafeMessage,
+            null,
+            "valid-captcha-token");
+
+        _htmlSanitizerMock
+            .Setup(sanitizer => sanitizer.Sanitize(unsafeMessage))
+            .Returns(string.Empty);
+
+        var result = await _handler.Handle(
+            command,
+            CancellationToken.None);
+
+        Assert.True(result.IsError);
+
+        var error = Assert.Single(result.Errors);
+
+        Assert.Equal("Comments.DomainValidation", error.Code);
+        Assert.Equal(ErrorType.Validation, error.Type);
 
         _commentRepositoryMock.Verify(
             repository => repository.AddAsync(

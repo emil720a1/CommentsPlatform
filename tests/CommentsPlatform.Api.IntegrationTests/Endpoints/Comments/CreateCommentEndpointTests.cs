@@ -135,6 +135,95 @@ public sealed class CreateCommentEndpointTests
         Assert.False(commentsExist);
     }
 
+    [Fact]
+    public async Task CreateComment_WithUnsafeHtml_PersistsSanitizedMessage()
+    {
+        await ClearCommentsAsync();
+
+        const string unsafeMessage =
+            "<p>Hello <strong>world</strong></p>" +
+            "<script>alert('xss')</script>";
+
+        const string expectedMessage =
+            "<p>Hello <strong>world</strong></p>";
+
+        var request = new CreateCommentRequest(
+            "User1",
+            "user@example.com",
+            null,
+            unsafeMessage,
+            null,
+            FakeCaptchaValidator.ValidToken);
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/comments",
+            request);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var result =
+            await response.Content.ReadFromJsonAsync<CreateCommentResponse>();
+
+        Assert.NotNull(result);
+        Assert.NotEqual(Guid.Empty, result.Id);
+
+        using var scope = _factory.Services.CreateScope();
+
+        var dbContext = scope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
+
+        var storedComment = await dbContext.Comments
+            .AsNoTracking()
+            .SingleAsync();
+
+        Assert.Equal(result.Id, storedComment.Id);
+        Assert.Equal(expectedMessage, storedComment.Message);
+        Assert.DoesNotContain(
+            "script",
+            storedComment.Message,
+            StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(
+            "alert",
+            storedComment.Message,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CreateComment_WithOnlyUnsafeHtml_ReturnsBadRequestAndDoesNotPersistComment()
+    {
+        await ClearCommentsAsync();
+
+        var request = new CreateCommentRequest(
+            "User1",
+            "user1@example.com",
+            null,
+            "<script>alert('xss')</script>",
+            null,
+            FakeCaptchaValidator.ValidToken);
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/comments",
+            request);
+
+        await ProblemDetailsAssertions.AssertAsync(
+            response,
+            HttpStatusCode.BadRequest,
+            "Validation error",
+            "One or more validation errors occurred.",
+            "Comments.DomainValidation");
+
+        using var scope = _factory.Services.CreateScope();
+
+        var dbContext = scope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
+
+        var commentsExist = await dbContext.Comments
+            .AsNoTracking()
+            .AnyAsync();
+
+        Assert.False(commentsExist);
+    }
+
     private async Task ClearCommentsAsync()
     {
         using var scope = _factory.Services.CreateScope();

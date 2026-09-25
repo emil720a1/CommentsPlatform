@@ -1,3 +1,4 @@
+using CommentsPlatform.Api.Common.Errors;
 using CommentsPlatform.Api.Contracts.Comments;
 using CommentsPlatform.Api.Contracts.Comments.GetComments;
 using CommentsPlatform.Application.Features.Comments.Create;
@@ -38,17 +39,7 @@ public class CommentsController : ControllerBase
 
         if (result.IsError)
         {
-            switch (result.FirstError.Type)
-            {
-                case ErrorType.Validation:
-                    return BadRequest(result.Errors);
-
-                case ErrorType.NotFound:
-                    return NotFound(result.FirstError.Description);
-
-                default:
-                    return StatusCode(StatusCodes.Status500InternalServerError);
-            }
+            return ApiErrorMapper.Map(result.Errors);
         }
 
         return StatusCode(StatusCodes.Status201Created, new CreateCommentResponse(result.Value));
@@ -59,10 +50,28 @@ public class CommentsController : ControllerBase
         [FromQuery] GetCommentsRequest request,
         CancellationToken cancellationToken)
     {
-        if (!TryMapSortBy(request.SortBy, out var sortBy) ||
-            !TryMapSortDirection(request.SortDirection, out var sortDirection))
+        if (!TryMapSortBy(request.SortBy, out var sortBy))
         {
-            return BadRequest();
+            return ApiErrorMapper.Map(
+                new[]
+                {
+                    Error.Validation(
+                        code: "Comments.SortBy.Invalid",
+                        description: "Sort field is invalid.")
+                });
+        }
+
+        if (!TryMapSortDirection(
+                request.SortDirection,
+                out var sortDirection))
+        {
+            return ApiErrorMapper.Map(
+                new[]
+                {
+                    Error.Validation(
+                        code: "Comments.SortDirection.Invalid",
+                        description: "Sort direction is invalid.")
+                });
         }
 
         var result = await _sender.Send(
@@ -75,11 +84,7 @@ public class CommentsController : ControllerBase
 
         if (result.IsError)
         {
-            return result.FirstError.Type switch
-            {
-                ErrorType.Validation => BadRequest(result.Errors),
-                _ => StatusCode(StatusCodes.Status500InternalServerError)
-            };
+            return ApiErrorMapper.Map(result.Errors);
         }
 
         var page = result.Value;

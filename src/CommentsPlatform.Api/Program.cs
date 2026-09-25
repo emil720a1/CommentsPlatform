@@ -1,9 +1,16 @@
+using CommentsPlatform.Api.Common.Errors;
 using CommentsPlatform.Application;
 using CommentsPlatform.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services
+    .AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+            ApiErrorMapper.Map(context.ModelState);
+    });
 builder.Services.AddOpenApi();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication();

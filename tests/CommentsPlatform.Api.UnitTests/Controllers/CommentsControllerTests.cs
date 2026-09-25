@@ -1,5 +1,6 @@
 using CommentsPlatform.Api.Contracts.Comments;
 using CommentsPlatform.Api.Contracts.Comments.GetComments;
+using CommentsPlatform.Api.Contracts.Common;
 using CommentsPlatform.Api.Controllers;
 using CommentsPlatform.Application.Common.Models;
 using CommentsPlatform.Application.Features.Comments.Create;
@@ -76,12 +77,13 @@ public class CommentsControllerTests
 
         var result = await _controller.CreateComment(request, CancellationToken.None);
 
-        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-
-        Assert.Equal(StatusCodes.Status400BadRequest, badRequestResult.StatusCode);
-
-        var returnedErrors = Assert.IsType<List<Error>>(badRequestResult.Value);
+        var returnedErrors = AssertProblemDetails(
+            result,
+            StatusCodes.Status400BadRequest,
+            "Validation error",
+            "One or more validation errors occurred.");
         var error = Assert.Single(returnedErrors);
+
         Assert.Equal(expectedError.Code, error.Code);
         Assert.Equal(expectedError.Description, error.Description);
     }
@@ -99,11 +101,15 @@ public class CommentsControllerTests
 
         var result = await _controller.CreateComment(request, CancellationToken.None);
 
-        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-        Assert.Equal(StatusCodes.Status404NotFound, notFoundResult.StatusCode);
+        var returnedErrors = AssertProblemDetails(
+            result,
+            StatusCodes.Status404NotFound,
+            "Resource not found",
+            expectedError.Description);
+        var error = Assert.Single(returnedErrors);
 
-        var errorMessage = Assert.IsType<string>(notFoundResult.Value);
-        Assert.Equal(expectedError.Description, errorMessage);
+        Assert.Equal(expectedError.Code, error.Code);
+        Assert.Equal(expectedError.Description, error.Description);
     }
 
     [Fact]
@@ -120,8 +126,15 @@ public class CommentsControllerTests
 
         var result = await _controller.CreateComment(request, CancellationToken.None);
 
-        var statusCodeResult = Assert.IsType<StatusCodeResult>(result);
-        Assert.Equal(StatusCodes.Status500InternalServerError, statusCodeResult.StatusCode);
+        var returnedErrors = AssertProblemDetails(
+            result,
+            StatusCodes.Status500InternalServerError,
+            "Internal server error",
+            "An unexpected error occurred.");
+        var error = Assert.Single(returnedErrors);
+
+        Assert.Equal("Server.Unexpected", error.Code);
+        Assert.Equal("An unexpected error occurred.", error.Description);
     }
 
     [Fact]
@@ -208,11 +221,13 @@ public class CommentsControllerTests
             request,
             CancellationToken.None);
 
-        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-        var returnedErrors = Assert.IsType<List<Error>>(badRequestResult.Value);
+        var returnedErrors = AssertProblemDetails(
+            result,
+            StatusCodes.Status400BadRequest,
+            "Validation error",
+            "One or more validation errors occurred.");
         var returnedError = Assert.Single(returnedErrors);
 
-        Assert.Equal(StatusCodes.Status400BadRequest, badRequestResult.StatusCode);
         Assert.Equal(expectedError.Code, returnedError.Code);
         Assert.Equal(expectedError.Description, returnedError.Description);
     }
@@ -233,19 +248,30 @@ public class CommentsControllerTests
             request,
             CancellationToken.None);
 
-        var statusCodeResult = Assert.IsType<StatusCodeResult>(result);
-
-        Assert.Equal(
+        var returnedErrors = AssertProblemDetails(
+            result,
             StatusCodes.Status500InternalServerError,
-            statusCodeResult.StatusCode);
+            "Internal server error",
+            "An unexpected error occurred.");
+        var error = Assert.Single(returnedErrors);
+
+        Assert.Equal("Server.Unexpected", error.Code);
+        Assert.Equal("An unexpected error occurred.", error.Description);
     }
 
     [Theory]
-    [InlineData(999, (int)CommentSortOrder.Descending)]
-    [InlineData((int)CommentSortField.CreatedAt, 999)]
+    [InlineData(
+        999,
+        (int)CommentSortOrder.Descending,
+        "Comments.SortBy.Invalid")]
+    [InlineData(
+        (int)CommentSortField.CreatedAt,
+        999,
+        "Comments.SortDirection.Invalid")]
     public async Task GetComments_WithUnsupportedSorting_ReturnsBadRequestWithoutDispatchingQuery(
         int sortBy,
-        int sortDirection)
+        int sortDirection,
+        string expectedErrorCode)
     {
         var request = new GetCommentsRequest(
             SortBy: (CommentSortField)sortBy,
@@ -255,12 +281,39 @@ public class CommentsControllerTests
             request,
             CancellationToken.None);
 
-        Assert.IsType<BadRequestResult>(result);
+        var returnedErrors = AssertProblemDetails(
+            result,
+            StatusCodes.Status400BadRequest,
+            "Validation error",
+            "One or more validation errors occurred.");
+        var error = Assert.Single(returnedErrors);
+
+        Assert.Equal(expectedErrorCode, error.Code);
 
         _senderMock.Verify(sender => sender.Send(
                 It.IsAny<GetCommentsQuery>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+
+    private static ApiError[] AssertProblemDetails(
+        IActionResult result,
+        int expectedStatusCode,
+        string expectedTitle,
+        string expectedDetail)
+    {
+        var objectResult = Assert.IsType<ObjectResult>(result);
+
+        Assert.Equal(expectedStatusCode, objectResult.StatusCode);
+
+        var problemDetails = Assert.IsType<ProblemDetails>(objectResult.Value);
+
+        Assert.Equal(expectedStatusCode, problemDetails.Status);
+        Assert.Equal(expectedTitle, problemDetails.Title);
+        Assert.Equal(expectedDetail, problemDetails.Detail);
+
+        return Assert.IsType<ApiError[]>(
+            problemDetails.Extensions["errors"]);
     }
 
     [Fact]

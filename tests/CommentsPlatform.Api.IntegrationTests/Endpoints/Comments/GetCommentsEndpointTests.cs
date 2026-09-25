@@ -46,17 +46,33 @@ public sealed class GetCommentsEndpointTests
     }
 
     [Theory]
-    [InlineData("/api/comments?page=0")]
-    [InlineData("/api/comments?pageSize=0")]
-    [InlineData("/api/comments?pageSize=101")]
-    [InlineData("/api/comments?sortBy=999")]
-    [InlineData("/api/comments?sortDirection=999")]
+    [InlineData(
+        "/api/comments?page=0",
+        "Comments.Page.Invalid")]
+    [InlineData(
+        "/api/comments?pageSize=0",
+        "Comments.PageSize.Invalid")]
+    [InlineData(
+        "/api/comments?pageSize=101",
+        "Comments.PageSize.Invalid")]
+    [InlineData(
+        "/api/comments?sortBy=999",
+        "Request.Validation")]
+    [InlineData(
+        "/api/comments?sortDirection=999",
+        "Request.Validation")]
     public async Task GetComments_WithInvalidQueryParameters_ReturnsBadRequest(
-        string invalidQuery)
+        string invalidQuery,
+        string expectedErrorCode)
     {
         var response = await _client.GetAsync(invalidQuery);
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        await ProblemDetailsAssertions.AssertAsync(
+            response,
+            HttpStatusCode.BadRequest,
+            "Validation error",
+            "One or more validation errors occurred.",
+            expectedErrorCode);
     }
 
     [Fact]

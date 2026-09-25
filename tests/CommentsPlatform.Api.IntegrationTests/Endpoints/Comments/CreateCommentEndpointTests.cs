@@ -78,7 +78,50 @@ public sealed class CreateCommentEndpointTests
             "/api/comments",
             request);
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        await ProblemDetailsAssertions.AssertAsync(
+            response,
+            HttpStatusCode.BadRequest,
+            "Validation error",
+            "One or more validation errors occurred.",
+            "Comments.Captcha.Invalid",
+            "CAPTCHA validation failed.");
+
+        using var scope = _factory.Services.CreateScope();
+
+        var dbContext = scope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
+
+        var commentsExist = await dbContext.Comments
+            .AsNoTracking()
+            .AnyAsync();
+
+        Assert.False(commentsExist);
+    }
+
+    [Fact]
+    public async Task CreateComment_WithMissingParent_ReturnsNotFoundAndDoesNotPersistComment()
+    {
+        await ClearCommentsAsync();
+
+        var request = new CreateCommentRequest(
+            "User1",
+            "user1@example.com",
+            null,
+            "Integration test reply",
+            Guid.NewGuid(),
+            FakeCaptchaValidator.ValidToken);
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/comments",
+            request);
+
+        await ProblemDetailsAssertions.AssertAsync(
+            response,
+            HttpStatusCode.NotFound,
+            "Resource not found",
+            "The parent comment was not found.",
+            "Comments.ParentNotFound",
+            "The parent comment was not found.");
 
         using var scope = _factory.Services.CreateScope();
 

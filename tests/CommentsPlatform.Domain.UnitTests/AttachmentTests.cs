@@ -2,15 +2,13 @@ namespace CommentsPlatform.Domain.UnitTests;
 
 public sealed class AttachmentTests
 {
+   private static readonly DateTimeOffset CreatedAt =
+      new(2026, 9, 25, 10, 0, 0, TimeSpan.Zero);
+
    [Fact]
    public void AddAttachment_WithValidFileMetadata_AddsAttachmentToComment()
    {
-      var comment = Comment.Create(
-         userName: "username",
-         email: "user@example.com",
-         homePage: null,
-         message: "message",
-         parentCommentId: null);
+      var comment = CreateComment();
 
       var attachment = comment.AddAttachment(
          originalFileName: "document.pdf",
@@ -39,12 +37,7 @@ public sealed class AttachmentTests
    [Fact]
    public void AddAttachment_WithValidImageMetadata_PreservesDimensions()
    {
-      var comment = Comment.Create(
-         userName: "username",
-         email: "user@example.com",
-         homePage: null,
-         message: "message",
-         parentCommentId: null);
+      var comment = CreateComment();
 
       var attachment = comment.AddAttachment(
          originalFileName: "photo.png",
@@ -69,12 +62,7 @@ public sealed class AttachmentTests
    public void AddAttachment_WithMissingOriginalFileName_ThrowsArgumentException(
       string? invalidOriginalFileName)
    {
-      var comment = Comment.Create(
-         userName: "username",
-         email: "user@example.com",
-         homePage: null,
-         message: "message",
-         parentCommentId: null);
+      var comment = CreateComment();
 
       var exception = Assert.Throws<ArgumentException>(() =>
          comment.AddAttachment(
@@ -96,12 +84,7 @@ public sealed class AttachmentTests
    public void AddAttachment_WithMissingStorageKey_ThrowsArgumentException(
       string? invalidStorageKey)
    {
-      var comment = Comment.Create(
-         userName: "username",
-         email: "user@example.com",
-         homePage: null,
-         message: "message",
-         parentCommentId: null);
+      var comment = CreateComment();
 
       var exception = Assert.Throws<ArgumentException>(() =>
          comment.AddAttachment(
@@ -123,12 +106,7 @@ public sealed class AttachmentTests
    public void AddAttachment_WithMissingContentType_ThrowsArgumentException(
       string? invalidContentType)
    {
-      var comment = Comment.Create(
-         userName: "username",
-         email: "user@example.com",
-         homePage: null,
-         message: "message",
-         parentCommentId: null);
+      var comment = CreateComment();
 
       var exception = Assert.Throws<ArgumentException>(() =>
          comment.AddAttachment(
@@ -149,12 +127,7 @@ public sealed class AttachmentTests
    public void AddAttachment_WithNonPositiveFileSize_ThrowsArgumentOutOfRangeException(
       long invalidFileSizeBytes)
    {
-      var comment = Comment.Create(
-         userName: "username",
-         email: "user@example.com",
-         homePage: null,
-         message: "message",
-         parentCommentId: null);
+      var comment = CreateComment();
 
       var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
          comment.AddAttachment(
@@ -176,12 +149,7 @@ public sealed class AttachmentTests
       int? width,
       int? height)
    {
-      var comment = Comment.Create(
-         userName: "username",
-         email: "user@example.com",
-         homePage: null,
-         message: "message",
-         parentCommentId: null);
+      var comment = CreateComment();
 
       Assert.Throws<ArgumentException>(() =>
          comment.AddAttachment(
@@ -205,12 +173,7 @@ public sealed class AttachmentTests
       int height,
       string expectedParamName)
    {
-      var comment = Comment.Create(
-         userName: "username",
-         email: "user@example.com",
-         homePage: null,
-         message: "message",
-         parentCommentId: null);
+      var comment = CreateComment();
 
       var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
          comment.AddAttachment(
@@ -229,12 +192,7 @@ public sealed class AttachmentTests
    [Fact]
    public void Attachments_WhenModifiedExternally_ThrowsNotSupportedException()
    {
-      var comment = Comment.Create(
-         userName: "username",
-         email: "user@example.com",
-         homePage: null,
-         message: "message",
-         parentCommentId: null);
+      var comment = CreateComment();
 
       var attachment = comment.AddAttachment(
          originalFileName: "document.pdf",
@@ -254,5 +212,16 @@ public sealed class AttachmentTests
       var storedAttachment = Assert.Single(comment.Attachments);
 
       Assert.Same(attachment, storedAttachment);
+   }
+
+   private static Comment CreateComment()
+   {
+      return Comment.Create(
+         userName: "username",
+         email: "user@example.com",
+         homePage: null,
+         message: "message",
+         parentCommentId: null,
+         createdAt: CreatedAt);
    }
 }

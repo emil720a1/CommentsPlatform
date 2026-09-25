@@ -9,23 +9,33 @@ namespace CommentsPlatform.Application.UnitTests.Features.Comments.Create;
 
 public sealed class CreateCommentCommandHandlerTests
 {
+    private static readonly DateTimeOffset FixedUtcNow =
+        new(2026, 9, 25, 10, 0, 0, TimeSpan.Zero);
+
     private readonly Mock<ICommentRepository> _commentRepositoryMock;
     private readonly Mock<ICaptchaValidator> _captchaValidatorMock;
+    private readonly Mock<TimeProvider> _timeProviderMock;
     private readonly CreateCommentCommandHandler _handler;
 
     public CreateCommentCommandHandlerTests()
     {
         _commentRepositoryMock = new Mock<ICommentRepository>();
         _captchaValidatorMock = new Mock<ICaptchaValidator>();
+        _timeProviderMock = new Mock<TimeProvider>();
 
         _captchaValidatorMock.Setup(validator => validator.IsValidAsync(
             It.IsAny<string>(),
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
+        _timeProviderMock
+            .Setup(timeProvider => timeProvider.GetUtcNow())
+            .Returns(FixedUtcNow);
+
         _handler = new CreateCommentCommandHandler(
             _commentRepositoryMock.Object,
-            _captchaValidatorMock.Object);
+            _captchaValidatorMock.Object,
+            _timeProviderMock.Object);
     }
 
     [Fact]
@@ -66,8 +76,13 @@ public sealed class CreateCommentCommandHandlerTests
                     comment.Email == command.Email &&
                     comment.HomePage == command.HomePage &&
                     comment.Message == command.Message &&
-                    comment.ParentCommentId == command.ParentCommentId),
+                    comment.ParentCommentId == command.ParentCommentId &&
+                    comment.CreatedAt == FixedUtcNow),
                 CancellationToken.None),
+            Times.Once);
+
+        _timeProviderMock.Verify(
+            timeProvider => timeProvider.GetUtcNow(),
             Times.Once);
 
         _commentRepositoryMock.Verify(

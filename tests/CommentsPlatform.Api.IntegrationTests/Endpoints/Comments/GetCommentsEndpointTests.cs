@@ -13,6 +13,9 @@ namespace CommentsPlatform.Api.IntegrationTests.Endpoints.Comments;
 public sealed class GetCommentsEndpointTests
     : IClassFixture<CommentsPlatformWebApplicationFactory>
 {
+    private static readonly DateTimeOffset SeedCreatedAt =
+        new(2026, 9, 25, 10, 0, 0, TimeSpan.Zero);
+
     private readonly CommentsPlatformWebApplicationFactory _factory;
     private readonly HttpClient _client;
 
@@ -85,36 +88,34 @@ public sealed class GetCommentsEndpointTests
         var middleCreatedAt = oldestCreatedAt.AddMinutes(1);
         var newestCreatedAt = oldestCreatedAt.AddMinutes(2);
 
-        var oldestComment = Comment.Create(
+        var oldestComment = CreateComment(
             userName: "User1",
             email: "user1@example.com",
             homePage: null,
             message: "Oldest comment",
-            parentCommentId: null);
+            parentCommentId: null,
+            createdAt: oldestCreatedAt);
 
-        var middleComment = Comment.Create(
+        var middleComment = CreateComment(
             userName: "User2",
             email: "user2@example.com",
             homePage: "https://example.com",
             message: "Middle comment",
-            parentCommentId: null);
+            parentCommentId: null,
+            createdAt: middleCreatedAt);
 
-        var newestComment = Comment.Create(
+        var newestComment = CreateComment(
             userName: "User3",
             email: "user3@example.com",
             homePage: null,
             message: "Newest comment",
-            parentCommentId: null);
+            parentCommentId: null,
+            createdAt: newestCreatedAt);
 
         await SeedCommentsAsync(
             oldestComment,
             middleComment,
             newestComment);
-
-        await SetCreatedAtAsync(
-            (oldestComment, oldestCreatedAt),
-            (middleComment, middleCreatedAt),
-            (newestComment, newestCreatedAt));
 
         var response = await _client.GetAsync(
             "/api/comments?page=1&pageSize=2&sortBy=CreatedAt&sortDirection=Descending");
@@ -164,19 +165,19 @@ public sealed class GetCommentsEndpointTests
     {
         await ClearCommentsAsync();
 
-        var parentComment = Comment.Create(
+        var parentComment = CreateComment(
             userName: "Parent1",
             email: "parent@example.com",
             homePage: null,
             message: "Parent comment",
             parentCommentId: null);
-        var secondTopLevelComment = Comment.Create(
+        var secondTopLevelComment = CreateComment(
             userName: "Parent2",
             email: "second@example.com",
             homePage: null,
             message: "Second top-level comment",
             parentCommentId: null);
-        var reply = Comment.Create(
+        var reply = CreateComment(
             userName: "Reply1",
             email: "reply@example.com",
             homePage: null,
@@ -218,19 +219,16 @@ public sealed class GetCommentsEndpointTests
         var baseCreatedAt = new DateTimeOffset(
             2026, 2, 1, 10, 0, 0, TimeSpan.Zero);
         var comments = Enumerable.Range(1, 5)
-            .Select(index => Comment.Create(
+            .Select(index => CreateComment(
                 userName: $"User{index}",
                 email: $"user{index}@example.com",
                 homePage: null,
                 message: $"Comment {index}",
-                parentCommentId: null))
+                parentCommentId: null,
+                createdAt: baseCreatedAt.AddMinutes(index)))
             .ToArray();
 
         await SeedCommentsAsync(comments);
-        await SetCreatedAtAsync(comments
-            .Select((comment, index) =>
-                (comment, baseCreatedAt.AddMinutes(index)))
-            .ToArray());
 
         var response = await _client.GetAsync(
             "/api/comments?page=2&pageSize=2&sortBy=CreatedAt&sortDirection=Descending");
@@ -260,33 +258,32 @@ public sealed class GetCommentsEndpointTests
 
         var oldestCreatedAt = new DateTimeOffset(
             2026, 3, 1, 10, 0, 0, TimeSpan.Zero);
-        var oldestComment = Comment.Create(
+        var oldestComment = CreateComment(
             userName: "Oldest1",
             email: "oldest@example.com",
             homePage: null,
             message: "Oldest comment",
-            parentCommentId: null);
-        var middleComment = Comment.Create(
+            parentCommentId: null,
+            createdAt: oldestCreatedAt);
+        var middleComment = CreateComment(
             userName: "Middle1",
             email: "middle@example.com",
             homePage: null,
             message: "Middle comment",
-            parentCommentId: null);
-        var newestComment = Comment.Create(
+            parentCommentId: null,
+            createdAt: oldestCreatedAt.AddMinutes(1));
+        var newestComment = CreateComment(
             userName: "Newest1",
             email: "newest@example.com",
             homePage: null,
             message: "Newest comment",
-            parentCommentId: null);
+            parentCommentId: null,
+            createdAt: oldestCreatedAt.AddMinutes(2));
 
         await SeedCommentsAsync(
             oldestComment,
             middleComment,
             newestComment);
-        await SetCreatedAtAsync(
-            (oldestComment, oldestCreatedAt),
-            (middleComment, oldestCreatedAt.AddMinutes(1)),
-            (newestComment, oldestCreatedAt.AddMinutes(2)));
 
         var response = await _client.GetAsync(
             "/api/comments?page=1&pageSize=3&sortBy=CreatedAt&sortDirection=Ascending");
@@ -318,6 +315,23 @@ public sealed class GetCommentsEndpointTests
         await dbContext.SaveChangesAsync();
     }
 
+    private static Comment CreateComment(
+        string userName,
+        string email,
+        string? homePage,
+        string message,
+        Guid? parentCommentId,
+        DateTimeOffset? createdAt = null)
+    {
+        return Comment.Create(
+            userName,
+            email,
+            homePage,
+            message,
+            parentCommentId,
+            createdAt ?? SeedCreatedAt);
+    }
+
     private async Task ClearCommentsAsync()
     {
         using var scope = _factory.Services.CreateScope();
@@ -331,22 +345,4 @@ public sealed class GetCommentsEndpointTests
         await dbContext.Comments.ExecuteDeleteAsync();
     }
 
-    private async Task SetCreatedAtAsync(
-        params (Comment Comment, DateTimeOffset CreatedAt)[] comments)
-    {
-        using var scope = _factory.Services.CreateScope();
-
-        var dbContext = scope.ServiceProvider
-            .GetRequiredService<ApplicationDbContext>();
-
-        foreach (var (comment, createdAt) in comments)
-        {
-            await dbContext.Comments
-                .Where(storedComment => storedComment.Id == comment.Id)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(
-                        storedComment => storedComment.CreatedAt,
-                        createdAt));
-        }
-    }
 }

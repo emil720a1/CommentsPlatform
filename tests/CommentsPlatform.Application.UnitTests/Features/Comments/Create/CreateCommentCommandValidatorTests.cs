@@ -14,7 +14,8 @@ public sealed class CreateCommentCommandValidatorTests
             "user@example.com",
             "https://example.com/",
             "Test message",
-            Guid.NewGuid());
+            Guid.NewGuid(),
+            "valid-captcha-token");
 
         var result = await _validator.ValidateAsync(command, CancellationToken.None);
 
@@ -34,7 +35,8 @@ public sealed class CreateCommentCommandValidatorTests
             "user@example.com",
             "https://example.com/",
             "Test message",
-            Guid.NewGuid());
+            Guid.NewGuid(),
+            "valid-captcha-token");
 
         var result = await _validator.ValidateAsync(command, CancellationToken.None);
 
@@ -56,7 +58,8 @@ public sealed class CreateCommentCommandValidatorTests
             "user@example.com",
             "https://example.com/",
             "Test message",
-            Guid.NewGuid());
+            Guid.NewGuid(),
+            "valid-captcha-token");
 
         var result = await _validator.ValidateAsync(command, CancellationToken.None);
 
@@ -77,7 +80,8 @@ public sealed class CreateCommentCommandValidatorTests
             invalidEmail!,
             "https://example.com/",
             "Test message",
-            Guid.NewGuid());
+            Guid.NewGuid(),
+            "valid-captcha-token");
 
         var result = await _validator.ValidateAsync(command, CancellationToken.None);
 
@@ -98,7 +102,8 @@ public sealed class CreateCommentCommandValidatorTests
             invalidEmail,
             "https://example.com/",
             "Test message",
-            Guid.NewGuid());
+            Guid.NewGuid(),
+            "valid-captcha-token");
 
         var result = await _validator.ValidateAsync(command, CancellationToken.None);
 
@@ -119,7 +124,8 @@ public sealed class CreateCommentCommandValidatorTests
             "user@example.com",
             invalidHomePage,
             "Test message",
-            Guid.NewGuid());
+            Guid.NewGuid(),
+            "valid-captcha-token");
 
         var result = await _validator.ValidateAsync(command, CancellationToken.None);
 
@@ -140,7 +146,8 @@ public sealed class CreateCommentCommandValidatorTests
             "user@example.com",
             homePage,
             "Test message",
-            Guid.NewGuid());
+            Guid.NewGuid(),
+            "valid-captcha-token");
 
         var result = await _validator.ValidateAsync(
             command,
@@ -162,7 +169,8 @@ public sealed class CreateCommentCommandValidatorTests
             "user@example.com",
             "https://example.com/",
             invalidMessage!,
-            Guid.NewGuid());
+            Guid.NewGuid(),
+            "valid-captcha-token");
 
         var result = await _validator.ValidateAsync(
             command,
@@ -181,7 +189,8 @@ public sealed class CreateCommentCommandValidatorTests
             "user@example.com",
             "https://example.com/",
             "Test message",
-            Guid.Empty);
+            Guid.Empty,
+            "valid-captcha-token");
 
         var result = await _validator.ValidateAsync(
             command,
@@ -204,7 +213,8 @@ public sealed class CreateCommentCommandValidatorTests
             "user@example.com",
             "http://example.com/",
             "Test message",
-            Guid.NewGuid());
+            Guid.NewGuid(),
+            "valid-captcha-token");
 
         var result = await _validator.ValidateAsync(
             command,
@@ -222,7 +232,8 @@ public sealed class CreateCommentCommandValidatorTests
             "user@example.com",
             "https://example.com/",
             "Test message",
-            null);
+            null,
+            "valid-captcha-token");
 
         var result = await _validator.ValidateAsync(
             command,
@@ -230,5 +241,32 @@ public sealed class CreateCommentCommandValidatorTests
 
         Assert.True(result.IsValid);
         Assert.Empty(result.Errors);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("  ")]
+    public async Task Validate_WithMissingCaptchaToken_ReturnsRequiredError(
+        string invalidCaptchaToken)
+    {
+        var command = new CreateCommentCommand(
+            "user123",
+            "user@example.com",
+            "https://example.com/",
+            "Test message",
+            null,
+            invalidCaptchaToken);
+
+        var result = await _validator.ValidateAsync(
+            command,
+            CancellationToken.None);
+
+        Assert.False(result.IsValid);
+        var error = Assert.Single(result.Errors);
+        Assert.Equal(
+            nameof(CreateCommentCommand.CaptchaToken),
+            error.PropertyName);
+
+        Assert.Equal("Comments.Captcha.Required", error.ErrorCode);
     }
 }

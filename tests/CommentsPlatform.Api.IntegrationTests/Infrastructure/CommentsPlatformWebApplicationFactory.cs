@@ -1,3 +1,4 @@
+using CommentsPlatform.Application.Common.Abstractions.Security;
 using CommentsPlatform.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -44,6 +45,14 @@ public sealed class CommentsPlatformWebApplicationFactory : IAsyncLifetime
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
+                builder.UseSetting(
+                    "ConnectionStrings:DefaultConnection",
+                    connectionString);
+
+                builder.UseSetting(
+                    "CloudflareTurnstile:SecretKey",
+                    "integration-test-secret");
+
                 builder.ConfigureServices(services =>
                 {
                     services.RemoveAll<
@@ -52,6 +61,11 @@ public sealed class CommentsPlatformWebApplicationFactory : IAsyncLifetime
 
                     services.AddDbContext<ApplicationDbContext>(options =>
                         options.UseSqlServer(connectionString));
+
+                    services.RemoveAll<ICaptchaValidator>();
+                    services.AddSingleton<
+                        ICaptchaValidator,
+                        FakeCaptchaValidator>();
                 });
             });
 

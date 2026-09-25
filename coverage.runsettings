@@ -13,7 +13,7 @@
           <IncludeTestAssembly>false</IncludeTestAssembly>
           <Exclude>[*.UnitTests]*,[*.IntegrationTests]*</Exclude>
           <ExcludeByFile>**/Migrations/*.cs,**/*.g.cs,**/*.Designer.cs</ExcludeByFile>
-          <UseSourceLink>true</UseSourceLink>
+          <UseSourceLink>false</UseSourceLink>
         </Configuration>
       </DataCollector>
     </DataCollectors>

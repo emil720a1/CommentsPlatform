@@ -5,4 +5,5 @@ public record CreateCommentRequest(
     string Email,
     string? HomePage,
     string Message,
-    Guid? ParentCommentId);
+    Guid? ParentCommentId,
+    string CaptchaToken);

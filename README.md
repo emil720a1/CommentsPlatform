@@ -49,6 +49,7 @@ tests/
 ├── CommentsPlatform.Domain.UnitTests
 ├── CommentsPlatform.Application.UnitTests
 ├── CommentsPlatform.Api.UnitTests
+├── CommentsPlatform.Infrastructure.UnitTests
 ├── CommentsPlatform.Infrastructure.IntegrationTests
 └── CommentsPlatform.Api.IntegrationTests
 ```
@@ -125,6 +126,36 @@ dotnet test CommentsPlatform.slnx \
 Integration tests require Docker because they run Microsoft SQL Server through Testcontainers.
 
 Detailed test project responsibilities, conventions, database isolation rules, and commands are documented in [tests/README.md](tests/README.md).
+
+## CAPTCHA Configuration
+
+Comment creation is protected by Cloudflare Turnstile.
+
+The backend receives a provider-neutral CAPTCHA token from the client and validates it through the Application `ICaptchaValidator` abstraction. The Cloudflare-specific HTTP implementation is located in the Infrastructure layer.
+
+The following configuration keys are supported:
+
+| Key | Required | Description |
+|---|---|---|
+| `CloudflareTurnstile__SecretKey` | Yes | Private Cloudflare Turnstile server-side secret |
+| `CloudflareTurnstile__VerificationUrl` | Yes | Cloudflare token verification endpoint |
+| `CloudflareTurnstile__ExpectedHostname` | No | Expected hostname returned by Cloudflare |
+| `CloudflareTurnstile__ExpectedAction` | No | Expected CAPTCHA action |
+| `CloudflareTurnstile__TimeoutSeconds` | Yes | Maximum provider response time in seconds |
+
+Provide the secret locally through an environment variable:
+
+```bash
+export CloudflareTurnstile__SecretKey="<your-local-secret>"
+```
+
+Real secret values must not be committed to the repository.
+
+The default verification URL and non-sensitive settings are defined in `src/CommentsPlatform.Api/appsettings.json`.
+
+API integration tests replace the real `ICaptchaValidator` implementation with a deterministic fake. Tests never call the external Cloudflare service.
+
+The client-side CAPTCHA widget will be implemented separately as part of the frontend scope.
 
 ## Local SQL Server
 

@@ -98,6 +98,17 @@ jobs:
           --logger "trx;LogFileName=api-unit-tests.trx"
           --results-directory TestResults/Unit
 
+      - name: Run Infrastructure unit tests with coverage
+        run: >
+          dotnet test
+          tests/CommentsPlatform.Infrastructure.UnitTests/CommentsPlatform.Infrastructure.UnitTests.csproj
+          --configuration Release
+          --no-build
+          --collect "XPlat Code Coverage"
+          --settings coverage.runsettings
+          --logger "trx;LogFileName=infrastructure-unit-tests.trx"
+          --results-directory TestResults/Unit
+
       - name: End SonarCloud analysis
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

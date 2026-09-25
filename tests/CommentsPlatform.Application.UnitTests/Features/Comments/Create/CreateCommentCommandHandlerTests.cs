@@ -1,4 +1,5 @@
 using CommentsPlatform.Application.Common.Abstractions.Persistence;
+using CommentsPlatform.Application.Common.Abstractions.Security;
 using CommentsPlatform.Application.Features.Comments.Create;
 using CommentsPlatform.Domain;
 using ErrorOr;
@@ -9,14 +10,22 @@ namespace CommentsPlatform.Application.UnitTests.Features.Comments.Create;
 public sealed class CreateCommentCommandHandlerTests
 {
     private readonly Mock<ICommentRepository> _commentRepositoryMock;
+    private readonly Mock<ICaptchaValidator> _captchaValidatorMock;
     private readonly CreateCommentCommandHandler _handler;
 
     public CreateCommentCommandHandlerTests()
     {
         _commentRepositoryMock = new Mock<ICommentRepository>();
+        _captchaValidatorMock = new Mock<ICaptchaValidator>();
+
+        _captchaValidatorMock.Setup(validator => validator.IsValidAsync(
+            It.IsAny<string>(),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
         _handler = new CreateCommentCommandHandler(
-            _commentRepositoryMock.Object);
+            _commentRepositoryMock.Object,
+            _captchaValidatorMock.Object);
     }
 
     [Fact]
@@ -27,7 +36,8 @@ public sealed class CreateCommentCommandHandlerTests
             "user@example.com",
             "https://example.com/",
             "Test message",
-            null);
+            null,
+            "valid-captcha-token");
 
         _commentRepositoryMock
             .Setup(repository => repository.AddAsync(
@@ -41,6 +51,12 @@ public sealed class CreateCommentCommandHandlerTests
 
         Assert.False(result.IsError);
         Assert.NotEqual(Guid.Empty, result.Value);
+
+        _captchaValidatorMock.Verify(
+            validator => validator.IsValidAsync(
+                command.CaptchaToken,
+                CancellationToken.None),
+            Times.Once);
 
         _commentRepositoryMock.Verify(
             repository => repository.AddAsync(
@@ -71,7 +87,8 @@ public sealed class CreateCommentCommandHandlerTests
             "user@example.com",
             "https://example.com/",
             "Test message",
-            parentCommentId);
+            parentCommentId,
+            "valid-captcha-token");
 
         _commentRepositoryMock
             .Setup(repository => repository.ExistsAsync(
@@ -118,7 +135,8 @@ public sealed class CreateCommentCommandHandlerTests
             "user@example.com",
             "https://example.com/",
             "Test message",
-            parentCommentId);
+            parentCommentId,
+            "valid-captcha-token");
 
         _commentRepositoryMock.Setup(
             repository => repository.ExistsAsync(
@@ -162,7 +180,8 @@ public sealed class CreateCommentCommandHandlerTests
             "user@example.com",
             "https://example.com/",
             "Test message",
-            null);
+            null,
+            "valid-captcha-token");
 
         var result = await _handler.Handle(
             command,
@@ -198,7 +217,8 @@ public sealed class CreateCommentCommandHandlerTests
             "user@example.com",
             "https://example.com/",
             "Test message",
-            null);
+            null,
+            "valid-captcha-token");
 
         _commentRepositoryMock
             .Setup(repository => repository.AddAsync(
@@ -212,10 +232,103 @@ public sealed class CreateCommentCommandHandlerTests
 
         Assert.False(result.IsError);
 
+        _captchaValidatorMock.Verify(
+            validator => validator.IsValidAsync(
+                command.CaptchaToken,
+                cancellationToken),
+            Times.Once);
+
         _commentRepositoryMock.Verify(
             repository => repository.AddAsync(
                 It.IsAny<Comment>(),
                 cancellationToken),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WithInvalidCaptcha_ReturnsInvalidCaptchaAndDoesNotUseRepository()
+    {
+        var parentCommentId = Guid.NewGuid();
+        const string captchaToken = "invalid-captcha-token";
+
+        _captchaValidatorMock
+            .Setup(validator => validator.IsValidAsync(
+                captchaToken,
+                CancellationToken.None))
+            .ReturnsAsync(false);
+
+        var command = new CreateCommentCommand(
+            "user123",
+            "user@example.com",
+            "https://example.com/",
+            "Test message",
+            parentCommentId,
+            captchaToken);
+
+        var result = await _handler.Handle(
+            command,
+            CancellationToken.None);
+
+        Assert.True(result.IsError);
+
+        var error = Assert.Single(result.Errors);
+
+        Assert.Equal(CreateCommentErrors.InvalidCaptcha.Code, error.Code);
+        Assert.Equal(CreateCommentErrors.InvalidCaptcha.Type, error.Type);
+
+        _captchaValidatorMock.Verify(
+            validator => validator.IsValidAsync(
+                captchaToken,
+                CancellationToken.None),
+            Times.Once);
+
+        _commentRepositoryMock.Verify(
+            repository => repository.ExistsAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+
+        _commentRepositoryMock.Verify(
+            repository => repository.AddAsync(
+                It.IsAny<Comment>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WithInvalidCaptcha_ReturnsBeforeDomainValidation()
+    {
+        const string captchaToken = "invalid-captcha-token";
+
+        _captchaValidatorMock
+            .Setup(validator => validator.IsValidAsync(
+                captchaToken,
+                CancellationToken.None))
+            .ReturnsAsync(false);
+
+        var command = new CreateCommentCommand(
+            string.Empty,
+            "user@example.com",
+            "https://example.com/",
+            "Test message",
+            null,
+            captchaToken);
+
+        var result = await _handler.Handle(
+            command,
+            CancellationToken.None);
+
+        Assert.True(result.IsError);
+
+        var error = Assert.Single(result.Errors);
+
+        Assert.Equal(CreateCommentErrors.InvalidCaptcha.Code, error.Code);
+        Assert.NotEqual("Comments.DomainValidation", error.Code);
+
+        _commentRepositoryMock.Verify(
+            repository => repository.AddAsync(
+                It.IsAny<Comment>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }

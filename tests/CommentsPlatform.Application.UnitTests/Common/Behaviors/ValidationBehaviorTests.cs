@@ -23,7 +23,8 @@ public sealed class ValidationBehaviorTests
             "user@example.com",
             "https://example.com/",
             "Test message",
-            null);
+            null,
+            "valid-captcha-token");
 
         var expectedId = Guid.NewGuid();
         var nextWasCalled = false;
@@ -74,7 +75,8 @@ public sealed class ValidationBehaviorTests
             "user@example.com",
             "https://example.com/",
             "Test message",
-            null);
+            null,
+            "valid-captcha-token");
 
         var expectedId = Guid.NewGuid();
         var nextWasCalled = false;
@@ -147,7 +149,8 @@ public sealed class ValidationBehaviorTests
             string.Empty,
             null,
             "Test message",
-            null);
+            null,
+            "valid-captcha-token");
 
         var nextWasCalled = false;
 

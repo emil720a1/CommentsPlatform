@@ -35,7 +35,7 @@ builder.Services.AddCors(options =>
             policy
                 .WithOrigins(allowedOrigins)
                 .WithMethods("GET", "POST", "OPTIONS")
-                .WithHeaders("Accept", "Content-type");
+                .WithHeaders("Accept", "Content-Type");
         });
 });
 

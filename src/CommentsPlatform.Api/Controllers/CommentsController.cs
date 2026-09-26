@@ -68,15 +68,28 @@ public class CommentsController : ControllerBase
         [FromForm] UploadAttachmentRequest request,
         CancellationToken cancellationToken)
     {
-        await using var content = request.File.OpenReadStream();
+        if (request.File is null)
+        {
+            return ApiErrorMapper.Map(
+                new[]
+                {
+                    Error.Validation(
+                        code: "Attachments.File.Required",
+                        description: "The attachment file is required.")
+                });
+        }
+
+        var file = request.File;
+
+        await using var content = file.OpenReadStream();
 
         var result = await _sender.Send(
             new UploadAttachmentCommand(
                 commentId,
                 content,
-                request.File.FileName,
-                request.File.ContentType,
-                request.File.Length),
+                file.FileName,
+                file.ContentType,
+                file.Length),
             cancellationToken);
 
         if (result.IsError)

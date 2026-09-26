@@ -148,6 +148,7 @@ public class CommentsControllerTests
             stream,
             "image.png",
             "image/png");
+        var file = Assert.IsAssignableFrom<IFormFile>(request.File);
         var commentId = Guid.NewGuid();
         var attachmentId = Guid.NewGuid();
         using var cancellationTokenSource = new CancellationTokenSource();
@@ -182,9 +183,9 @@ public class CommentsControllerTests
         Assert.NotNull(capturedCommand);
         Assert.True(contentWasReadableDuringSend);
         Assert.Equal(commentId, capturedCommand.CommentId);
-        Assert.Equal(request.File.FileName, capturedCommand.OriginalFileName);
-        Assert.Equal(request.File.ContentType, capturedCommand.ContentType);
-        Assert.Equal(request.File.Length, capturedCommand.FileSizeBytes);
+        Assert.Equal(file.FileName, capturedCommand.OriginalFileName);
+        Assert.Equal(file.ContentType, capturedCommand.ContentType);
+        Assert.Equal(file.Length, capturedCommand.FileSizeBytes);
 
         _senderMock.Verify(
             sender => sender.Send(
@@ -225,6 +226,33 @@ public class CommentsControllerTests
 
         Assert.Equal(expectedError.Code, error.Code);
         Assert.Equal(expectedError.Description, error.Description);
+    }
+
+    [Fact]
+    public async Task UploadAttachment_WithoutFile_ReturnsBadRequestWithoutDispatchingCommand()
+    {
+        var request = new UploadAttachmentRequest();
+
+        var result = await _controller.UploadAttachment(
+            Guid.NewGuid(),
+            request,
+            CancellationToken.None);
+
+        var returnedErrors = AssertProblemDetails(
+            result,
+            StatusCodes.Status400BadRequest,
+            "Validation error",
+            "One or more validation errors occurred.");
+        var error = Assert.Single(returnedErrors);
+
+        Assert.Equal("Attachments.File.Required", error.Code);
+        Assert.Equal("The attachment file is required.", error.Description);
+
+        _senderMock.Verify(
+            sender => sender.Send(
+                It.IsAny<UploadAttachmentCommand>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]

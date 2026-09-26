@@ -8,7 +8,7 @@ The project name is currently provisional and may be changed later.
 
 CommentsPlatform is designed using Clean Architecture principles.
 
-The backend is developed first as an ASP.NET Core Web API. The frontend will be implemented later using React.
+The backend is implemented as an ASP.NET Core Web API. The frontend is implemented using Angular.
 
 ## Technologies
 
@@ -17,7 +17,7 @@ The backend is developed first as an ASP.NET Core Web API. The frontend will be 
 - CQRS and MediatR
 - Entity Framework Core
 - Microsoft SQL Server
-- React
+- Angular
 - Docker
 - xUnit
 - SonarCloud
@@ -102,7 +102,7 @@ The project is currently under development.
 - initial database migration verification;
 - repository implementations;
 - API endpoints;
-- React frontend;
+- Angular frontend;
 - CI and SonarCloud analysis.
 
 ## Testing

@@ -1,0 +1,35 @@
+<main>
+  <h1>Коментарі</h1>
+
+  @if (isLoading()) {
+    <p>Завантаження коментарів...</p>
+  } @else if (errorMessage(); as error) {
+    <p role="alert">{{ error }}</p>
+
+    <button type="button" (click)="loadComments()">Спробувати ще раз</button>
+  } @else if (commentsPage(); as page) {
+    @if (page.items.length === 0) {
+      <p>Коментарів поки немає.</p>
+    } @else {
+      <section aria-label="Список коментарів">
+        @for (comment of page.items; track comment.id) {
+          <article>
+            <header>
+              <strong>{{ comment.userName }}</strong>
+
+              <time [attr.datetime]="comment.createdAt">
+                {{ comment.createdAt | date: 'medium' }}
+              </time>
+            </header>
+
+            <p>{{ comment.message }}</p>
+          </article>
+        }
+      </section>
+
+      <p>
+        Сторінка {{ page.page }} із {{ page.totalPages }}. Усього коментарів: {{ page.totalCount }}.
+      </p>
+    }
+  }
+</main>

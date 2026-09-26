@@ -5,16 +5,6 @@ using CommentsPlatform.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var corsSettings = builder.Configuration
-    .GetSection(CorsSettings.SectionName)
-    .Get<CorsSettings>()
-    ?? new CorsSettings();
-
-var allowedOrigins = corsSettings.AllowedOrigins
-    .Where(origin => !string.IsNullOrWhiteSpace(origin))
-    .Distinct(StringComparer.OrdinalIgnoreCase)
-    .ToArray();
-
 builder.Services
     .AddControllers()
     .ConfigureApiBehaviorOptions(options =>
@@ -25,20 +15,7 @@ builder.Services
 
 builder.Services.AddOpenApi();
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
-
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy(
-        CorsPolicyNames.AngularFrontend,
-        policy =>
-        {
-            policy
-                .WithOrigins(allowedOrigins)
-                .WithMethods("GET", "POST", "OPTIONS")
-                .WithHeaders("Accept", "Content-Type");
-        });
-});
-
+builder.Services.AddConfiguredCors(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication();
 

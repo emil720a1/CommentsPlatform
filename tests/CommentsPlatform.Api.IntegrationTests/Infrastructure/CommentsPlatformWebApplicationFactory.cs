@@ -12,6 +12,10 @@ namespace CommentsPlatform.Api.IntegrationTests.Infrastructure;
 
 public sealed class CommentsPlatformWebApplicationFactory : IAsyncLifetime
 {
+    private readonly string _fileStorageRootPath = Path.Combine(
+        Path.GetTempPath(),
+        $"comments-platform-api-tests-{Guid.NewGuid():N}");
+
     private readonly MsSqlContainer _databaseContainer =
         new MsSqlBuilder(
                 "mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04")
@@ -20,6 +24,8 @@ public sealed class CommentsPlatformWebApplicationFactory : IAsyncLifetime
     private WebApplicationFactory<Program> _factory = null!;
 
     public IServiceProvider Services => _factory.Services;
+
+    public string FileStorageRootPath => _fileStorageRootPath;
 
     public HttpClient CreateClient()
     {
@@ -53,6 +59,10 @@ public sealed class CommentsPlatformWebApplicationFactory : IAsyncLifetime
                     "CloudflareTurnstile:SecretKey",
                     "integration-test-secret");
 
+                builder.UseSetting(
+                    "FileStorage:RootPath",
+                    _fileStorageRootPath);
+
                 builder.ConfigureServices(services =>
                 {
                     services.RemoveAll<
@@ -85,5 +95,12 @@ public sealed class CommentsPlatformWebApplicationFactory : IAsyncLifetime
         }
 
         await _databaseContainer.DisposeAsync();
+
+        if (Directory.Exists(_fileStorageRootPath))
+        {
+            Directory.Delete(
+                _fileStorageRootPath,
+                recursive: true);
+        }
     }
 }

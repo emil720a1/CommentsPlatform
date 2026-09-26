@@ -135,6 +135,7 @@ public sealed class Comment
         string storageKey,
         string contentType,
         long fileSizeBytes,
+        DateTimeOffset createdAt,
         int? width = null,
         int? height = null)
     {
@@ -145,7 +146,8 @@ public sealed class Comment
             contentType,
             fileSizeBytes,
             width,
-            height);
+            height,
+            createdAt);
 
         _attachments.Add(attachment);
 

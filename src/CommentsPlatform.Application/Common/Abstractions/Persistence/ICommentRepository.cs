@@ -8,7 +8,14 @@ public interface ICommentRepository
 {
     Task<bool> ExistsAsync(Guid commentId, CancellationToken cancellationToken);
 
+    Task<Comment?> GetByIdAsync(
+        Guid commentId,
+        CancellationToken cancellationToken);
+
     Task AddAsync(Comment comment, CancellationToken cancellationToken);
+
+    Task SaveChangesAsync(
+        CancellationToken cancellationToken);
 
     Task<PaginatedList<CommentDto>> GetTopLevelCommentsAsync(
         GetCommentsParameters parameters,

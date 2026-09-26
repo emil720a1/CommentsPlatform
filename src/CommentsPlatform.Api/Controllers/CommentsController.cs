@@ -1,6 +1,8 @@
 using CommentsPlatform.Api.Common.Errors;
 using CommentsPlatform.Api.Contracts.Comments;
+using CommentsPlatform.Api.Contracts.Comments.Attachments;
 using CommentsPlatform.Api.Contracts.Comments.GetComments;
+using CommentsPlatform.Application.Features.Attachments.Upload;
 using CommentsPlatform.Application.Features.Comments.Create;
 using CommentsPlatform.Application.Features.Comments.Queries.GetComments;
 using ErrorOr;
@@ -43,6 +45,61 @@ public class CommentsController : ControllerBase
         }
 
         return StatusCode(StatusCodes.Status201Created, new CreateCommentResponse(result.Value));
+    }
+
+    [HttpPost("{commentId:guid}/attachments")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(6 * 1024 * 1024)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 6 * 1024 * 1024)]
+    [ProducesResponseType(
+        typeof(UploadAttachmentResponse),
+        StatusCodes.Status201Created)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status404NotFound)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> UploadAttachment(
+        Guid commentId,
+        [FromForm] UploadAttachmentRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (request.File is null)
+        {
+            return ApiErrorMapper.Map(
+                new[]
+                {
+                    Error.Validation(
+                        code: "Attachments.File.Required",
+                        description: "The attachment file is required.")
+                });
+        }
+
+        var file = request.File;
+
+        await using var content = file.OpenReadStream();
+
+        var result = await _sender.Send(
+            new UploadAttachmentCommand(
+                commentId,
+                content,
+                file.FileName,
+                file.ContentType,
+                file.Length),
+            cancellationToken);
+
+        if (result.IsError)
+        {
+            return ApiErrorMapper.Map(result.Errors);
+        }
+
+        return StatusCode(
+            StatusCodes.Status201Created,
+            new UploadAttachmentResponse(result.Value));
     }
 
     [HttpGet]

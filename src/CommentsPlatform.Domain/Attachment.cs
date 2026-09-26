@@ -49,7 +49,8 @@ public sealed class Attachment
         string contentType,
         long fileSizeBytes,
         int? width,
-        int? height)
+        int? height,
+        DateTimeOffset createdAt)
     {
         if (commentId == Guid.Empty)
         {
@@ -115,6 +116,6 @@ public sealed class Attachment
             fileSizeBytes,
             width,
             height,
-            DateTimeOffset.UtcNow);
+            createdAt.ToUniversalTime());
     }
 }

@@ -8,8 +8,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace CommentsPlatform.Api.IntegrationTests.Endpoints.Comments;
 
+[Collection(ApiIntegrationTestCollection.Name)]
 public sealed class CreateCommentEndpointTests
-    : IClassFixture<CommentsPlatformWebApplicationFactory>
 {
     private readonly CommentsPlatformWebApplicationFactory _factory;
     private readonly HttpClient _client;

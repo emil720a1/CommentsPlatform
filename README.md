@@ -8,7 +8,7 @@ The project name is currently provisional and may be changed later.
 
 CommentsPlatform is designed using Clean Architecture principles.
 
-The backend is developed first as an ASP.NET Core Web API. The frontend will be implemented later using React.
+The backend is implemented as an ASP.NET Core Web API. The frontend is implemented using Angular.
 
 ## Technologies
 
@@ -17,7 +17,7 @@ The backend is developed first as an ASP.NET Core Web API. The frontend will be 
 - CQRS and MediatR
 - Entity Framework Core
 - Microsoft SQL Server
-- React
+- Angular
 - Docker
 - xUnit
 - SonarCloud
@@ -102,7 +102,7 @@ The project is currently under development.
 - initial database migration verification;
 - repository implementations;
 - API endpoints;
-- React frontend;
+- Angular frontend;
 - CI and SonarCloud analysis.
 
 ## Testing
@@ -127,6 +127,76 @@ Integration tests require Docker because they run Microsoft SQL Server through T
 
 Detailed test project responsibilities, conventions, database isolation rules, and commands are documented in [tests/README.md](tests/README.md).
 
+## Local Backend Secrets
+
+The API requires a SQL Server connection string and a Cloudflare Turnstile secret at startup.
+
+Sensitive values must not be stored in `appsettings.json` or committed to the repository. For local development, use ASP.NET Core User Secrets.
+
+The API project is already initialized with a `UserSecretsId`.
+
+Configure the local SQL Server connection string:
+
+```bash
+dotnet user-secrets set \
+  "ConnectionStrings:DefaultConnection" \
+  "Server=localhost,1435;Database=CommentsPlatform;User Id=sa;Password=<LOCAL_PASSWORD>;TrustServerCertificate=True" \
+  --project src/CommentsPlatform.Api/CommentsPlatform.Api.csproj
+```
+
+Replace `<LOCAL_PASSWORD>` with the `MSSQL_SA_PASSWORD` value from the local ignored `.env` file.
+
+Configure the Cloudflare Turnstile secret:
+
+```bash
+dotnet user-secrets set \
+  "CloudflareTurnstile:SecretKey" \
+  "<LOCAL_OR_TEST_SECRET>" \
+  --project src/CommentsPlatform.Api/CommentsPlatform.Api.csproj
+```
+
+Use a provider-approved test secret for local development. Never use or commit a production secret.
+
+List the configured secrets:
+
+```bash
+dotnet user-secrets list \
+  --project src/CommentsPlatform.Api/CommentsPlatform.Api.csproj
+```
+
+> **Warning:** This command prints secret values to the terminal. Do not copy its output into logs, issues, pull requests, or screenshots.
+
+Remove one configured secret:
+
+```bash
+dotnet user-secrets remove \
+  "CloudflareTurnstile:SecretKey" \
+  --project src/CommentsPlatform.Api/CommentsPlatform.Api.csproj
+```
+
+Clear all local secrets for the API project:
+
+```bash
+dotnet user-secrets clear \
+  --project src/CommentsPlatform.Api/CommentsPlatform.Api.csproj
+```
+
+User Secrets are stored outside the repository and are loaded automatically when the API runs in the `Development` environment.
+
+Environment variables remain supported for CI, containers, and other environments:
+
+```text
+ConnectionStrings__DefaultConnection
+CloudflareTurnstile__SecretKey
+```
+
+Start the API after configuring the secrets:
+
+```bash
+dotnet run \
+  --project src/CommentsPlatform.Api/CommentsPlatform.Api.csproj
+```
+
 ## CAPTCHA Configuration
 
 Comment creation is protected by Cloudflare Turnstile.
@@ -143,13 +213,9 @@ The following configuration keys are supported:
 | `CloudflareTurnstile__ExpectedAction` | No | Expected CAPTCHA action |
 | `CloudflareTurnstile__TimeoutSeconds` | Yes | Maximum provider response time in seconds |
 
-Provide the secret locally through an environment variable:
+Configure the secret through ASP.NET Core User Secrets as described in [Local Backend Secrets](#local-backend-secrets).
 
-```bash
-export CloudflareTurnstile__SecretKey="<your-local-secret>"
-```
-
-Real secret values must not be committed to the repository.
+Environment variables may be used outside local development. Real secret values must not be committed to the repository.
 
 The default verification URL and non-sensitive settings are defined in `src/CommentsPlatform.Api/appsettings.json`.
 
@@ -215,6 +281,8 @@ Server=localhost,1435;Database=CommentsPlatform;User Id=sa;Password=<MSSQL_SA_PA
 ```
 
 Replace `<MSSQL_SA_PASSWORD>` with the local password from `.env`. Never commit the resulting connection string if it contains a real password.
+
+Configure this connection string through ASP.NET Core User Secrets as described in [Local Backend Secrets](#local-backend-secrets).
 
 ### Stopping SQL Server
 

@@ -1,3 +1,4 @@
+using CommentsPlatform.Api.Common.Cors;
 using CommentsPlatform.Api.Common.Errors;
 using CommentsPlatform.Application;
 using CommentsPlatform.Infrastructure;
@@ -11,8 +12,10 @@ builder.Services
         options.InvalidModelStateResponseFactory = context =>
             ApiErrorMapper.Map(context.ModelState);
     });
+
 builder.Services.AddOpenApi();
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+builder.Services.AddConfiguredCors(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication();
 
@@ -23,10 +26,13 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.MapControllers();
 app.UseHttpsRedirection();
 
-app.Run();
+app.UseCors(CorsPolicyNames.AngularFrontend);
+
+app.MapControllers();
+
+await app.RunAsync();
 
 public partial class Program
 {

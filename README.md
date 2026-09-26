@@ -127,6 +127,32 @@ Integration tests require Docker because they run Microsoft SQL Server through T
 
 Detailed test project responsibilities, conventions, database isolation rules, and commands are documented in [tests/README.md](tests/README.md).
 
+## CORS Configuration
+
+The API uses the named `AngularFrontend` CORS policy to allow browser
+requests from explicitly configured frontend origins.
+
+The local Angular development server origin is configured in
+`src/CommentsPlatform.Api/Properties/launchSettings.json`:
+
+```text
+http://localhost:4200
+```
+
+Additional environments must provide their own allowlist through
+configuration. For example, configure the first allowed origin with:
+
+```text
+Cors__AllowedOrigins__0=https://comments.example.com
+```
+
+Additional origins use the next numeric index, such as
+`Cors__AllowedOrigins__1`.
+
+The policy allows the request methods and headers required by the Angular
+client, but it does not allow arbitrary origins or cross-origin credentials.
+Origins must be provided without a trailing slash.
+
 ## Local Backend Secrets
 
 The API requires a SQL Server connection string and a Cloudflare Turnstile secret at startup.

@@ -12,6 +12,8 @@ namespace CommentsPlatform.Api.IntegrationTests.Infrastructure;
 
 public sealed class CommentsPlatformWebApplicationFactory : IAsyncLifetime
 {
+    public const string AllowedCorsOrigin = "http://localhost:4200";
+
     private readonly string _fileStorageRootPath = Path.Combine(
         Path.GetTempPath(),
         $"comments-platform-api-tests-{Guid.NewGuid():N}");
@@ -54,6 +56,10 @@ public sealed class CommentsPlatformWebApplicationFactory : IAsyncLifetime
                 builder.UseSetting(
                     "ConnectionStrings:DefaultConnection",
                     connectionString);
+
+                builder.UseSetting(
+                    "Cors:AllowedOrigins:0",
+                    AllowedCorsOrigin);
 
                 builder.UseSetting(
                     "CloudflareTurnstile:SecretKey",

@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
-import { ActivatedRoute, ParamMap } from '@angular/router';
-import { catchError, EMPTY, finalize, map, Subject, switchMap, takeUntil, tap } from 'rxjs';
+import { ActivatedRoute, ParamMap, Router } from '@angular/router';
+import { catchError, EMPTY, finalize, map, Subject, switchMap, takeUntil } from 'rxjs';
 
 import { CommentForm, CommentCreatedEvent } from '../../components/comment-form/comment-form';
 import {
@@ -28,7 +28,9 @@ export class CommentsPage implements OnInit, OnDestroy {
 
   private readonly commentsApi = inject(CommentsApiService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly destroyed = new Subject<void>();
+  private hasReadInitialParameters = false;
 
   protected readonly commentsPage = signal<GetCommentsResponse | null>(null);
   protected readonly isLoading = signal(false);
@@ -46,8 +48,23 @@ export class CommentsPage implements OnInit, OnDestroy {
     this.route.queryParamMap
       .pipe(
         map((queryParameters) => this.readParameters(queryParameters)),
-        tap((parameters) => this.parameters.set(parameters)),
-        switchMap((parameters) => this.requestComments(parameters)),
+        switchMap((parameters) => {
+          const currentParameters = this.parameters();
+          const sortingChanged =
+            this.hasReadInitialParameters &&
+            (parameters.sortBy !== currentParameters.sortBy ||
+              parameters.sortDirection !== currentParameters.sortDirection);
+
+          this.hasReadInitialParameters = true;
+
+          if (sortingChanged && parameters.page !== CommentsPage.defaultPage) {
+            void this.navigateToPage(CommentsPage.defaultPage);
+            return EMPTY;
+          }
+
+          this.parameters.set(parameters);
+          return this.requestComments(parameters);
+        }),
         takeUntil(this.destroyed),
       )
       .subscribe((response) => this.commentsPage.set(response));
@@ -62,6 +79,22 @@ export class CommentsPage implements OnInit, OnDestroy {
     this.requestComments(this.parameters())
       .pipe(takeUntil(this.destroyed))
       .subscribe((response) => this.commentsPage.set(response));
+  }
+
+  protected goToPreviousPage(): void {
+    const page = this.commentsPage();
+
+    if (page?.hasPreviousPage) {
+      void this.navigateToPage(page.page - 1);
+    }
+  }
+
+  protected goToNextPage(): void {
+    const page = this.commentsPage();
+
+    if (page?.hasNextPage) {
+      void this.navigateToPage(page.page + 1);
+    }
   }
 
   protected startReply(reply: CommentReplyRequestedEvent): void {
@@ -99,20 +132,26 @@ export class CommentsPage implements OnInit, OnDestroy {
       CommentsPage.defaultPage,
       Number.MAX_SAFE_INTEGER,
     );
-    const pageSize = this.readIntegerInRange(
-      queryParameters.get('pageSize'),
-      CommentsPage.defaultPageSize,
-      100,
-    );
     const sortDirection: CommentSortDirection =
       queryParameters.get('sortDirection') === 'Ascending' ? 'Ascending' : 'Descending';
 
     return {
       page,
-      pageSize,
+      pageSize: CommentsPage.defaultPageSize,
       sortBy: 'CreatedAt',
       sortDirection,
     };
+  }
+
+  private navigateToPage(page: number): Promise<boolean> {
+    return this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        page,
+        pageSize: CommentsPage.defaultPageSize,
+      },
+      queryParamsHandling: 'merge',
+    });
   }
 
   private readIntegerInRange(value: string | null, fallback: number, maximum: number): number {

@@ -30,6 +30,16 @@
       <p aria-live="polite">
         Сторінка {{ page.page }} із {{ page.totalPages }}. Усього коментарів: {{ page.totalCount }}.
       </p>
+
+      <nav class="pagination" aria-label="Пагінація коментарів">
+        <button type="button" [disabled]="!page.hasPreviousPage" (click)="goToPreviousPage()">
+          Попередня
+        </button>
+        <span aria-current="page">Сторінка {{ page.page }} із {{ page.totalPages }}</span>
+        <button type="button" [disabled]="!page.hasNextPage" (click)="goToNextPage()">
+          Наступна
+        </button>
+      </nav>
     }
   }
 </main>

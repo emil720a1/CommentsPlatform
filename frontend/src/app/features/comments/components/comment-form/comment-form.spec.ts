@@ -5,7 +5,7 @@ import { vi } from 'vitest';
 
 import { CommentsApiService } from '../../services/comments-api.service';
 import { TurnstileApi } from '../turnstile-widget/turnstile.types';
-import { CommentForm } from './comment-form';
+import { CommentCreatedEvent, CommentForm } from './comment-form';
 
 describe('CommentForm', () => {
   let component: CommentForm;
@@ -73,9 +73,91 @@ describe('CommentForm', () => {
     fixture.detectChanges();
 
     expect(commentsApi.createComment).not.toHaveBeenCalled();
-    expect(fixture.nativeElement.textContent).toContain('Введіть ім’я користувача.');
+    expect(fixture.nativeElement.textContent).toContain('Введіть ім\u2019я користувача.');
     expect(fixture.nativeElement.textContent).toContain('Введіть email.');
     expect(fixture.nativeElement.textContent).toContain('Введіть повідомлення.');
+  });
+
+  it('shows a pattern error for a username with non-Latin characters', () => {
+    setInputValue('input[type="text"]', 'Алiс#');
+    const userNameInput = getInput('input[type="text"]');
+    userNameInput.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain(
+      'Ім\u2019я може містити лише латинські літери та цифри.',
+    );
+  });
+
+  it('accepts a username with only Latin letters and digits', () => {
+    setInputValue('input[type="text"]', 'Alice123');
+    const userNameInput = getInput('input[type="text"]');
+    userNameInput.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).not.toContain(
+      'Ім\u2019я може містити лише латинські літери та цифри.',
+    );
+  });
+
+  it('shows an error for an invalid email address', () => {
+    setInputValue('input[type="email"]', 'not-an-email');
+    const emailInput = getInput('input[type="email"]');
+    emailInput.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Введіть коректний email.');
+  });
+
+  it('does not show an error for a valid email address', () => {
+    setInputValue('input[type="email"]', 'alice@example.com');
+    const emailInput = getInput('input[type="email"]');
+    emailInput.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).not.toContain('Введіть коректний email.');
+  });
+
+  it('allows an empty homepage since it is optional', () => {
+    fillRequiredFields();
+    submitForm();
+
+    expect(commentsApi.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({ homePage: null }),
+    );
+  });
+
+  it('shows an error for an invalid homepage URL', () => {
+    setInputValue('input[type="url"]', 'not-a-url');
+    const homePageInput = getInput('input[type="url"]');
+    homePageInput.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain(
+      'Введіть адресу, яка починається з http:// або https://.',
+    );
+  });
+
+  it('does not show an error for a valid https homepage', () => {
+    setInputValue('input[type="url"]', 'https://example.com');
+    const homePageInput = getInput('input[type="url"]');
+    homePageInput.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).not.toContain(
+      'Введіть адресу, яка починається з http:// або https://.',
+    );
+  });
+
+  it('shows the CAPTCHA required error when submitting without CAPTCHA', () => {
+    const captchaControl = component['commentForm'].controls.captchaToken;
+    captchaControl.setValue('');
+    captchaControl.markAsTouched();
+    fixture.detectChanges();
+
+    submitForm();
+
+    expect(fixture.nativeElement.textContent).toContain('Підтвердьте CAPTCHA.');
   });
 
   it('passes the parent comment id when creating a reply', () => {
@@ -175,6 +257,153 @@ describe('CommentForm', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Technical provider details');
   });
 
+  it('shows a network error message when the API is unreachable', () => {
+    commentsApi.createComment.mockReturnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 0,
+            error: new ProgressEvent('error'),
+          }),
+      ),
+    );
+    fillRequiredFields();
+
+    submitForm();
+
+    expect(fixture.nativeElement.textContent).toContain(
+      'Не вдалося підключитися до API. Перевірте з\u2019єднання та спробуйте ще раз.',
+    );
+  });
+
+  it('shows a generic error message for an unknown API error', () => {
+    commentsApi.createComment.mockReturnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 500,
+            error: { detail: 'Internal server error' },
+          }),
+      ),
+    );
+    fillRequiredFields();
+
+    submitForm();
+
+    expect(fixture.nativeElement.textContent).toContain(
+      'Не вдалося створити коментар. Спробуйте ще раз.',
+    );
+  });
+
+  it('emits commentCreated with an attachment error message when upload fails', () => {
+    const createdEvents: CommentCreatedEvent[] = [];
+    component.commentCreated.subscribe((event) => createdEvents.push(event));
+
+    commentsApi.uploadAttachment.mockReturnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 413,
+            error: {
+              errors: [
+                {
+                  code: 'Attachments.FileSize.TooLarge',
+                  description: 'Too large',
+                },
+              ],
+            },
+          }),
+      ),
+    );
+
+    const file = new File(['hello'], 'note.txt', { type: 'text/plain' });
+    const fileInput = getInput('input[type="file"]');
+    Object.defineProperty(fileInput, 'files', { configurable: true, value: [file] });
+    fileInput.dispatchEvent(new Event('change'));
+    fillRequiredFields();
+
+    submitForm();
+
+    expect(createdEvents).toHaveLength(1);
+    expect(createdEvents[0].attachmentErrorMessage).toContain(
+      'Attachment перевищує максимальний розмір 5 MiB.',
+    );
+  });
+
+  it('emits commentCreated with null when submission succeeds without attachment', () => {
+    const createdEvents: CommentCreatedEvent[] = [];
+    component.commentCreated.subscribe((event) => createdEvents.push(event));
+    fillRequiredFields();
+
+    submitForm();
+
+    expect(createdEvents).toHaveLength(1);
+    expect(createdEvents[0].attachmentErrorMessage).toBeNull();
+  });
+
+  it('resets the form after a successful submission', () => {
+    fillRequiredFields();
+    submitForm();
+
+    const userNameInput = getInput('input[type="text"]');
+    const emailInput = getInput('input[type="email"]');
+    const textarea = getTextArea();
+
+    expect(userNameInput.value).toBe('');
+    expect(emailInput.value).toBe('');
+    expect(textarea.value).toBe('');
+  });
+
+  it('emits replyCancelled when the cancel reply button is clicked', () => {
+    fixture.componentRef.setInput('parentCommentId', 'parent-id');
+    fixture.componentRef.setInput('replyToUserName', 'Bob2');
+    fixture.detectChanges();
+
+    const cancelHandler = vi.fn();
+    component.replyCancelled.subscribe(cancelHandler);
+
+    const cancelButton = Array.from(
+      fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
+    ).find((button) => button.textContent?.includes('Скасувати відповідь'));
+    cancelButton?.click();
+    fixture.detectChanges();
+
+    expect(cancelHandler).toHaveBeenCalledOnce();
+  });
+
+  it('does not show the cancel button for a root comment form', () => {
+    const cancelButton = Array.from(
+      fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
+    ).find((button) => button.textContent?.includes('Скасувати відповідь'));
+
+    expect(cancelButton).toBeUndefined();
+  });
+
+  it('does not emit replyCancelled while submitting', () => {
+    fixture.componentRef.setInput('parentCommentId', 'parent-id');
+    fixture.componentRef.setInput('replyToUserName', 'Bob2');
+    fixture.detectChanges();
+
+    const cancelHandler = vi.fn();
+    component.replyCancelled.subscribe(cancelHandler);
+
+    const createResult = new Subject<{ id: string }>();
+    commentsApi.createComment.mockReturnValue(createResult);
+    fillRequiredFields();
+    submitForm();
+
+    const cancelButton = Array.from(
+      fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
+    ).find((button) => button.textContent?.includes('Скасувати відповідь'));
+    cancelButton?.click();
+    fixture.detectChanges();
+
+    expect(cancelHandler).not.toHaveBeenCalled();
+
+    createResult.next({ id: 'comment-id' });
+    createResult.complete();
+  });
+
   it('wraps selected message text in an allowed inline tag', () => {
     setInputValue('textarea', 'Hello world');
     const textarea = getTextArea();
@@ -248,6 +477,22 @@ describe('CommentForm', () => {
       'Код',
       'Посилання',
     ]);
+  });
+
+  it('escapes HTML special characters in link attributes', () => {
+    vi.spyOn(window, 'prompt')
+      .mockReturnValueOnce('https://example.com/path?x=1&y=2')
+      .mockReturnValueOnce('title with "quotes" & <angle>');
+    setInputValue('textarea', 'click here');
+    const textarea = getTextArea();
+    textarea.select();
+
+    clickToolbarButton('Посилання');
+
+    expect(textarea.value).toContain('&amp;');
+    expect(textarea.value).toContain('&quot;');
+    expect(textarea.value).toContain('&lt;');
+    expect(textarea.value).toContain('&gt;');
   });
 
   function fillRequiredFields(): void {

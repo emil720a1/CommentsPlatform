@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 
 import { AttachmentResponse } from '../../models/comment.models';
 import { CommentAttachment } from './comment-attachment';
@@ -75,6 +76,99 @@ describe('CommentAttachment', () => {
     expect(downloadLink.hasAttribute('download')).toBe(true);
 
     (fixture.nativeElement.querySelector('.close-button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it('renders the file name in the download link', () => {
+    fixture.componentRef.setInput(
+      'attachment',
+      createAttachment({ originalFileName: 'document.txt', contentType: 'text/plain' }),
+    );
+    fixture.detectChanges();
+
+    const downloadLink = fixture.nativeElement.querySelector('a') as HTMLAnchorElement;
+
+    expect(downloadLink.textContent?.trim()).toContain('document.txt');
+    expect(downloadLink.hasAttribute('download')).toBe(true);
+  });
+
+  it('displays the file size in bytes for small files', () => {
+    fixture.componentRef.setInput('attachment', createAttachment({ fileSizeBytes: 500 }));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('500 B');
+  });
+
+  it('displays the file size in KB for medium files', () => {
+    fixture.componentRef.setInput('attachment', createAttachment({ fileSizeBytes: 51200 }));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('50.0 KB');
+  });
+
+  it('displays the file size in MB for large files', () => {
+    fixture.componentRef.setInput(
+      'attachment',
+      createAttachment({ fileSizeBytes: 5 * 1024 * 1024 }),
+    );
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('5.0 MB');
+  });
+
+  it('has a labeled section for accessibility', () => {
+    fixture.componentRef.setInput(
+      'attachment',
+      createAttachment({ originalFileName: 'report.png' }),
+    );
+    fixture.detectChanges();
+
+    const section = fixture.nativeElement.querySelector('section.attachment') as HTMLElement;
+
+    expect(section.getAttribute('aria-label')).toBe('Вкладення report.png');
+  });
+
+  it('renders the preview button with an accessible label for images', () => {
+    fixture.componentRef.setInput(
+      'attachment',
+      createAttachment({ originalFileName: 'photo.jpg' }),
+    );
+    fixture.detectChanges();
+
+    const previewButton = fixture.nativeElement.querySelector(
+      '.preview-button',
+    ) as HTMLButtonElement;
+
+    expect(previewButton.getAttribute('aria-label')).toBe('Відкрити зображення photo.jpg');
+  });
+
+  it('closes the lightbox with the Escape key', () => {
+    fixture.componentRef.setInput('attachment', createAttachment());
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('.preview-button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[role="dialog"]')).not.toBeNull();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it('closes the lightbox when the backdrop is clicked', () => {
+    fixture.componentRef.setInput('attachment', createAttachment());
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('.preview-button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[role="dialog"]')).not.toBeNull();
+
+    (fixture.nativeElement.querySelector('.backdrop') as HTMLElement).click();
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('[role="dialog"]')).toBeNull();

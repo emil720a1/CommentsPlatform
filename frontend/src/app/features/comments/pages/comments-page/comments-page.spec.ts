@@ -179,6 +179,64 @@ describe('CommentsPage', () => {
     });
   });
 
+  it('displays the active default sorting options', () => {
+    expect(getSelect('comment-sort-field').value).toBe('CreatedAt');
+    expect(getSelect('comment-sort-direction').value).toBe('Descending');
+  });
+
+  it('sorts by username and resets pagination to page one', async () => {
+    await router.navigate([], { queryParams: { page: 3 } });
+    await fixture.whenStable();
+    commentsApi.getComments.mockClear();
+
+    changeSelect('comment-sort-field', 'UserName');
+    await fixture.whenStable();
+
+    expect(router.url).toContain('page=1');
+    expect(router.url).toContain('sortBy=UserName');
+    expect(commentsApi.getComments).toHaveBeenCalledWith({
+      page: 1,
+      pageSize: 25,
+      sortBy: 'UserName',
+      sortDirection: 'Descending',
+    });
+  });
+
+  it('sorts by email in ascending order and preserves the state in the URL', async () => {
+    changeSelect('comment-sort-field', 'Email');
+    await fixture.whenStable();
+    changeSelect('comment-sort-direction', 'Ascending');
+    await fixture.whenStable();
+
+    expect(router.url).toContain('sortBy=Email');
+    expect(router.url).toContain('sortDirection=Ascending');
+    expect(commentsApi.getComments).toHaveBeenLastCalledWith({
+      page: 1,
+      pageSize: 25,
+      sortBy: 'Email',
+      sortDirection: 'Ascending',
+    });
+  });
+
+  it('restores username sorting after component recreation', async () => {
+    fixture.destroy();
+    await router.navigateByUrl('/?page=2&sortBy=UserName&sortDirection=Ascending');
+    commentsApi.getComments.mockClear();
+    fixture = TestBed.createComponent(CommentsPage);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(getSelect('comment-sort-field').value).toBe('UserName');
+    expect(getSelect('comment-sort-direction').value).toBe('Ascending');
+    expect(commentsApi.getComments).toHaveBeenCalledWith({
+      page: 2,
+      pageSize: 25,
+      sortBy: 'UserName',
+      sortDirection: 'Ascending',
+    });
+  });
+
   it('falls back to safe defaults for invalid query parameters', async () => {
     await router.navigateByUrl('/?page=-1&pageSize=999&sortBy=Unknown&sortDirection=Unknown');
     await fixture.whenStable();
@@ -284,5 +342,16 @@ describe('CommentsPage', () => {
     }
 
     return button;
+  }
+
+  function getSelect(id: string): HTMLSelectElement {
+    return fixture.nativeElement.querySelector(`#${id}`) as HTMLSelectElement;
+  }
+
+  function changeSelect(id: string, value: string): void {
+    const select = getSelect(id);
+    select.value = value;
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
   }
 });

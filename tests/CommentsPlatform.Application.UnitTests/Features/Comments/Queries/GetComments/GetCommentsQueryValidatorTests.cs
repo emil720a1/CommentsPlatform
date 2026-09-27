@@ -14,14 +14,22 @@ public sealed class GetCommentsQueryValidatorTests
         _validator = new GetCommentsQueryValidator();
     }
 
-    [Fact]
-    public void Validate_WithValidQuery_ShouldNotHaveAnyErrors()
+    [Theory]
+    [InlineData(CommentSortBy.UserName, SortDirection.Ascending)]
+    [InlineData(CommentSortBy.UserName, SortDirection.Descending)]
+    [InlineData(CommentSortBy.Email, SortDirection.Ascending)]
+    [InlineData(CommentSortBy.Email, SortDirection.Descending)]
+    [InlineData(CommentSortBy.CreatedAt, SortDirection.Ascending)]
+    [InlineData(CommentSortBy.CreatedAt, SortDirection.Descending)]
+    public void Validate_WithSupportedSorting_ShouldNotHaveAnyErrors(
+        CommentSortBy sortBy,
+        SortDirection sortDirection)
     {
         var query = new GetCommentsQuery(
             Page: 1,
             PageSize: 50,
-            SortBy: CommentSortBy.CreatedAt,
-            SortDirection: SortDirection.Descending);
+            SortBy: sortBy,
+            SortDirection: sortDirection);
 
         var result = _validator.TestValidate(query);
         result.ShouldNotHaveAnyValidationErrors();

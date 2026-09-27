@@ -1,4 +1,4 @@
-export type CommentSortField = 'CreatedAt';
+export type CommentSortField = 'UserName' | 'Email' | 'CreatedAt';
 
 export type CommentSortDirection = 'Ascending' | 'Descending';
 

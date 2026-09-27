@@ -1,10 +1,13 @@
-import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
-import { ActivatedRoute, ParamMap, Router } from '@angular/router';
+import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { ActivatedRoute, ParamMap } from '@angular/router';
 import { catchError, EMPTY, finalize, map, Subject, switchMap, takeUntil, tap } from 'rxjs';
 
-import { CommentCreatedEvent, CommentForm } from '../../components/comment-form/comment-form';
+import { CommentForm, CommentCreatedEvent } from '../../components/comment-form/comment-form';
+import {
+  CommentReplyRequestedEvent,
+  CommentsList,
+} from '../../components/comments-list/comments-list';
 import {
   ApiProblemDetails,
   CommentSortDirection,
@@ -15,50 +18,29 @@ import { CommentsApiService } from '../../services/comments-api.service';
 
 @Component({
   selector: 'app-comments-page',
-  imports: [DatePipe, CommentForm],
+  imports: [CommentForm, CommentsList],
   templateUrl: './comments-page.html',
   styleUrl: './comments-page.scss',
 })
 export class CommentsPage implements OnInit, OnDestroy {
   private static readonly defaultPage = 1;
   private static readonly defaultPageSize = 25;
-  private static readonly allowedPageSizes = [10, 25, 50] as const;
 
   private readonly commentsApi = inject(CommentsApiService);
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   private readonly destroyed = new Subject<void>();
 
   protected readonly commentsPage = signal<GetCommentsResponse | null>(null);
-
   protected readonly isLoading = signal(false);
-
   protected readonly errorMessage = signal<string | null>(null);
-
-  protected readonly replyingTo = signal<{ id: string; userName: string } | null>(null);
-
+  protected readonly replyingTo = signal<CommentReplyRequestedEvent | null>(null);
   protected readonly submissionWarning = signal<string | null>(null);
-
   protected readonly parameters = signal<Required<GetCommentsParams>>({
     page: CommentsPage.defaultPage,
     pageSize: CommentsPage.defaultPageSize,
     sortBy: 'CreatedAt',
     sortDirection: 'Descending',
   });
-
-  protected readonly pageNumbers = computed(() => {
-    const totalPages = this.commentsPage()?.totalPages ?? 0;
-    const currentPage = this.parameters().page;
-    const firstPage = Math.max(1, Math.min(currentPage - 3, totalPages - 6));
-    const lastPage = Math.min(totalPages, firstPage + 6);
-
-    return Array.from(
-      { length: Math.max(0, lastPage - firstPage + 1) },
-      (_, index) => firstPage + index,
-    );
-  });
-
-  protected readonly pageSizes = CommentsPage.allowedPageSizes;
 
   ngOnInit(): void {
     this.route.queryParamMap
@@ -82,34 +64,19 @@ export class CommentsPage implements OnInit, OnDestroy {
       .subscribe((response) => this.commentsPage.set(response));
   }
 
-  protected goToPage(page: number): void {
-    const totalPages = this.commentsPage()?.totalPages ?? 0;
-
-    if (page < 1 || page > totalPages || page === this.parameters().page) {
-      return;
-    }
-
-    void this.updateQueryParameters({ page });
+  protected startReply(reply: CommentReplyRequestedEvent): void {
+    this.submissionWarning.set(null);
+    this.replyingTo.set(reply);
   }
 
-  protected changeSortDirection(event: Event): void {
-    const sortDirection = (event.target as HTMLSelectElement).value as CommentSortDirection;
-
-    if (sortDirection !== 'Ascending' && sortDirection !== 'Descending') {
-      return;
-    }
-
-    void this.updateQueryParameters({ page: 1, sortDirection });
+  protected cancelReply(): void {
+    this.replyingTo.set(null);
   }
 
-  protected changePageSize(event: Event): void {
-    const pageSize = Number((event.target as HTMLSelectElement).value);
-
-    if (!CommentsPage.allowedPageSizes.includes(pageSize as 10 | 25 | 50)) {
-      return;
-    }
-
-    void this.updateQueryParameters({ page: 1, pageSize });
+  protected onCommentCreated(event: CommentCreatedEvent): void {
+    this.submissionWarning.set(event.attachmentErrorMessage);
+    this.replyingTo.set(null);
+    this.loadComments();
   }
 
   private requestComments(parameters: Required<GetCommentsParams>) {
@@ -126,30 +93,17 @@ export class CommentsPage implements OnInit, OnDestroy {
     );
   }
 
-  protected startReply(id: string, userName: string): void {
-    this.submissionWarning.set(null);
-    this.replyingTo.set({ id, userName });
-  }
-
-  protected cancelReply(): void {
-    this.replyingTo.set(null);
-  }
-
-  protected onCommentCreated(event: CommentCreatedEvent): void {
-    this.submissionWarning.set(event.attachmentErrorMessage);
-    this.replyingTo.set(null);
-    this.loadComments();
-  }
-
   private readParameters(queryParameters: ParamMap): Required<GetCommentsParams> {
-    const page = this.readPositiveInteger(queryParameters.get('page'), CommentsPage.defaultPage);
-    const requestedPageSize = this.readPositiveInteger(
+    const page = this.readIntegerInRange(
+      queryParameters.get('page'),
+      CommentsPage.defaultPage,
+      Number.MAX_SAFE_INTEGER,
+    );
+    const pageSize = this.readIntegerInRange(
       queryParameters.get('pageSize'),
       CommentsPage.defaultPageSize,
+      100,
     );
-    const pageSize = CommentsPage.allowedPageSizes.includes(requestedPageSize as 10 | 25 | 50)
-      ? requestedPageSize
-      : CommentsPage.defaultPageSize;
     const sortDirection: CommentSortDirection =
       queryParameters.get('sortDirection') === 'Ascending' ? 'Ascending' : 'Descending';
 
@@ -161,27 +115,15 @@ export class CommentsPage implements OnInit, OnDestroy {
     };
   }
 
-  private readPositiveInteger(value: string | null, fallback: number): number {
+  private readIntegerInRange(value: string | null, fallback: number, maximum: number): number {
     if (value === null || !/^\d+$/.test(value)) {
       return fallback;
     }
 
     const parsedValue = Number(value);
-    return Number.isSafeInteger(parsedValue) && parsedValue > 0 ? parsedValue : fallback;
-  }
-
-  private updateQueryParameters(changes: Partial<Required<GetCommentsParams>>): Promise<boolean> {
-    const parameters = { ...this.parameters(), ...changes };
-
-    return this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: {
-        page: parameters.page,
-        pageSize: parameters.pageSize,
-        sortBy: parameters.sortBy,
-        sortDirection: parameters.sortDirection,
-      },
-    });
+    return Number.isSafeInteger(parsedValue) && parsedValue > 0 && parsedValue <= maximum
+      ? parsedValue
+      : fallback;
   }
 
   private getErrorMessage(error: HttpErrorResponse): string {
@@ -190,7 +132,6 @@ export class CommentsPage implements OnInit, OnDestroy {
     }
 
     const problem = error.error as Partial<ApiProblemDetails> | null;
-
     return problem?.detail ?? 'Не вдалося завантажити коментарі.';
   }
 }

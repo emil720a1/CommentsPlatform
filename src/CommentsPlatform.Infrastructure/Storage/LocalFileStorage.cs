@@ -82,6 +82,24 @@ public sealed class LocalFileStorage : IFileStorage
         return Task.CompletedTask;
     }
 
+    public Task<Stream> OpenReadAsync(
+        string storageKey,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var filePath = GetSafeFilePath(storageKey);
+        Stream stream = new FileStream(
+            filePath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            bufferSize: 81920,
+            useAsync: true);
+
+        return Task.FromResult(stream);
+    }
+
     private string GetSafeFilePath(string storageKey)
     {
         if (string.IsNullOrWhiteSpace(storageKey))

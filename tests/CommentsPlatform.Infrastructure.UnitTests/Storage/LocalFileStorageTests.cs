@@ -168,6 +168,34 @@ public sealed class LocalFileStorageTests : IDisposable
     }
 
     [Fact]
+    public async Task OpenReadAsync_WhenFileExists_ReturnsItsContent()
+    {
+        const string storageKey = "comments/comment-id/file.txt";
+        byte[] expectedContent = [1, 2, 3];
+        await using var content = new MemoryStream(expectedContent);
+        await _storage.SaveAsync(content, storageKey, CancellationToken.None);
+
+        await using var result = await _storage.OpenReadAsync(
+            storageKey,
+            CancellationToken.None);
+        using var buffer = new MemoryStream();
+        await result.CopyToAsync(buffer);
+
+        Assert.Equal(expectedContent, buffer.ToArray());
+    }
+
+    [Theory]
+    [InlineData("../outside.txt")]
+    [InlineData("comments/../outside.txt")]
+    [InlineData(@"comments\outside.txt")]
+    public async Task OpenReadAsync_WithUnsafeStorageKey_ThrowsArgumentException(
+        string storageKey)
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _storage.OpenReadAsync(storageKey, CancellationToken.None));
+    }
+
+    [Fact]
     public void Constructor_WithMissingRootPath_ThrowsInvalidOperationException()
     {
         var options = Options.Create(new LocalFileStorageOptions

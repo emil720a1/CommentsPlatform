@@ -12,9 +12,22 @@ export interface GetCommentsParams {
 export interface CommentResponse {
   id: string;
   userName: string;
+  email?: string;
   homePage: string | null;
   createdAt: string;
   message: string;
+  attachments: AttachmentResponse[];
+}
+
+export interface AttachmentResponse {
+  id: string;
+  originalFileName: string;
+  contentType: string;
+  fileSizeBytes: number;
+  width: number | null;
+  height: number | null;
+  createdAt: string;
+  downloadUrl: string;
 }
 
 export interface GetCommentsResponse {

@@ -16,6 +16,7 @@ const commentsResponse: GetCommentsResponse = {
       homePage: 'https://example.com/',
       createdAt: '2026-09-27T10:00:00Z',
       message: 'Hello world',
+      attachments: [],
     },
   ],
   page: 1,
@@ -88,63 +89,6 @@ describe('CommentsPage', () => {
     ) as HTMLAnchorElement;
     expect(homePageLink.href).toBe('https://example.com/');
     expect(homePageLink.rel).toContain('noopener');
-  });
-
-  it('requests the next page and stores pagination in query parameters', async () => {
-    clickButton('Наступна');
-    await fixture.whenStable();
-
-    expect(router.url).toContain('page=2');
-    expect(commentsApi.getComments).toHaveBeenLastCalledWith({
-      page: 2,
-      pageSize: 25,
-      sortBy: 'CreatedAt',
-      sortDirection: 'Descending',
-    });
-  });
-
-  it('changes sorting, resets the page and sends the correct API parameters', async () => {
-    await router.navigate([], {
-      queryParams: {
-        page: 2,
-        pageSize: 25,
-        sortBy: 'CreatedAt',
-        sortDirection: 'Descending',
-      },
-    });
-    await fixture.whenStable();
-
-    const sortSelect = fixture.nativeElement.querySelector(
-      '.list-controls select',
-    ) as HTMLSelectElement;
-    sortSelect.value = 'Ascending';
-    sortSelect.dispatchEvent(new Event('change'));
-    await fixture.whenStable();
-
-    expect(router.url).toContain('page=1');
-    expect(router.url).toContain('sortDirection=Ascending');
-    expect(commentsApi.getComments).toHaveBeenLastCalledWith({
-      page: 1,
-      pageSize: 25,
-      sortBy: 'CreatedAt',
-      sortDirection: 'Ascending',
-    });
-  });
-
-  it('changes page size and resets the current page', async () => {
-    const pageSizeSelect = fixture.nativeElement.querySelectorAll(
-      '.list-controls select',
-    )[1] as HTMLSelectElement;
-    pageSizeSelect.value = '50';
-    pageSizeSelect.dispatchEvent(new Event('change'));
-    await fixture.whenStable();
-
-    expect(commentsApi.getComments).toHaveBeenLastCalledWith({
-      page: 1,
-      pageSize: 50,
-      sortBy: 'CreatedAt',
-      sortDirection: 'Descending',
-    });
   });
 
   it('restores pagination and sorting from the URL after component recreation', async () => {
@@ -260,14 +204,4 @@ describe('CommentsPage', () => {
 
     expect(fixture.nativeElement.textContent).not.toContain('Відповідь для Alice1');
   });
-
-  function clickButton(label: string): void {
-    const button = Array.from(
-      fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
-    ).find((candidate) => candidate.textContent?.trim() === label);
-
-    expect(button).toBeDefined();
-    button?.click();
-    fixture.detectChanges();
-  }
 });

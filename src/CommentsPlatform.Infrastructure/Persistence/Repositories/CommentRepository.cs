@@ -96,35 +96,92 @@ public sealed class CommentRepository : ICommentRepository
                 "Unsupported comment sort field.")
         };
 
-        var items = await orderedQuery
+        var rootComments = await orderedQuery
             .Skip((parameters.Page - 1) * parameters.PageSize)
             .Take(parameters.PageSize)
-            .Select(comment => new CommentDto(
-                comment.Id,
-                comment.UserName,
-                comment.HomePage,
-                comment.CreatedAt,
-                comment.Email,
-                comment.Message,
-                comment.Attachments
-                    .OrderBy(attachment => attachment.CreatedAt)
-                    .ThenBy(attachment => attachment.Id)
-                    .Select(attachment => new AttachmentDto(
-                        attachment.Id,
-                        attachment.OriginalFileName,
-                        attachment.ContentType,
-                        attachment.FileSizeBytes,
-                        attachment.Width,
-                        attachment.Height,
-                        attachment.CreatedAt))
-                    .ToList()))
+            .Include(comment => comment.Attachments)
             .ToListAsync(cancellationToken);
+
+        var repliesByParentId = await LoadRepliesAsync(
+            rootComments.Select(comment => comment.Id).ToArray(),
+            cancellationToken);
+
+        var items = rootComments
+            .Select(comment => MapComment(comment, repliesByParentId))
+            .ToList();
 
         return new PaginatedList<CommentDto>(
             items,
             parameters.Page,
             parameters.PageSize,
             totalCount);
+    }
+
+    private async Task<IReadOnlyDictionary<Guid, IReadOnlyList<Comment>>> LoadRepliesAsync(
+        IReadOnlyCollection<Guid> rootCommentIds,
+        CancellationToken cancellationToken)
+    {
+        var repliesByParentId = new Dictionary<Guid, IReadOnlyList<Comment>>();
+        var parentIds = rootCommentIds;
+
+        while (parentIds.Count > 0)
+        {
+            var replies = await _dbContext.Comments
+                .AsNoTracking()
+                .Include(comment => comment.Attachments)
+                .Where(comment =>
+                    comment.ParentCommentId.HasValue &&
+                    parentIds.Contains(comment.ParentCommentId.Value))
+                .OrderBy(comment => comment.CreatedAt)
+                .ThenBy(comment => comment.Id)
+                .ToListAsync(cancellationToken);
+
+            if (replies.Count == 0)
+            {
+                break;
+            }
+
+            foreach (var group in replies.GroupBy(comment => comment.ParentCommentId!.Value))
+            {
+                repliesByParentId[group.Key] = group.ToList();
+            }
+
+            parentIds = replies.Select(comment => comment.Id).ToArray();
+        }
+
+        return repliesByParentId;
+    }
+
+    private static CommentDto MapComment(
+        Comment comment,
+        IReadOnlyDictionary<Guid, IReadOnlyList<Comment>> repliesByParentId)
+    {
+        var replies = repliesByParentId.TryGetValue(comment.Id, out var childComments)
+            ? childComments.Select(child => MapComment(child, repliesByParentId)).ToList()
+            : [];
+
+        return new CommentDto(
+            comment.Id,
+            comment.UserName,
+            comment.HomePage,
+            comment.CreatedAt,
+            comment.Email,
+            comment.Message,
+            comment.Attachments
+                .OrderBy(attachment => attachment.CreatedAt)
+                .ThenBy(attachment => attachment.Id)
+                .Select(attachment => new AttachmentDto(
+                    attachment.Id,
+                    attachment.OriginalFileName,
+                    attachment.ContentType,
+                    attachment.FileSizeBytes,
+                    attachment.Width,
+                    attachment.Height,
+                    attachment.CreatedAt))
+                .ToList())
+        {
+            Replies = replies
+        };
     }
 
     private static IOrderedQueryable<Comment> ApplyOrdering<TKey>(

@@ -18,6 +18,7 @@ const commentsResponse: GetCommentsResponse = {
       createdAt: '2026-09-27T10:00:00Z',
       message: 'Hello world',
       attachments: [],
+      replies: [],
     },
   ],
   page: 1,
@@ -330,6 +331,40 @@ describe('CommentsPage', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).not.toContain('Відповідь для Alice1');
+  });
+
+  it('opens the reply form for a nested comment', async () => {
+    commentsApi.getComments.mockReturnValueOnce(
+      of({
+        ...commentsResponse,
+        items: [
+          {
+            ...commentsResponse.items[0],
+            replies: [
+              {
+                ...commentsResponse.items[0],
+                id: 'nested-comment-id',
+                userName: 'Nested1',
+                email: 'nested@example.com',
+                message: 'Nested reply',
+                replies: [],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    await router.navigate([], { queryParams: { page: 2 } });
+    fixture.detectChanges();
+
+    const replyButtons = fixture.nativeElement.querySelectorAll(
+      'app-comment-item button',
+    ) as NodeListOf<HTMLButtonElement>;
+    replyButtons[1].click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Відповідь для Nested1');
   });
 
   function getButton(label: string): HTMLButtonElement {

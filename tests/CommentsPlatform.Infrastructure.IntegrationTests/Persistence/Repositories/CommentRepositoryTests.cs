@@ -70,7 +70,7 @@ public sealed class CommentRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task GetTopLevelCommentsAsync_WhenDatabaseContainsReplies_ReturnsOnlyTopLevelComments()
+    public async Task GetTopLevelCommentsAsync_WhenDatabaseContainsReplies_ReturnsNestedTree()
     {
         var firstTopLevelComment = CreateTopLevelComment("user1", "First message");
         var secondTopLevelComment = CreateTopLevelComment("user2", "Second message");
@@ -81,11 +81,19 @@ public sealed class CommentRepositoryTests : IAsyncLifetime
             "Reply message",
             firstTopLevelComment.Id,
             CreatedAt);
+        var nestedReply = Comment.Create(
+            "nestedUser",
+            "nested@example.com",
+            null,
+            "Nested reply",
+            reply.Id,
+            CreatedAt.AddMinutes(1));
 
         _dbContext.Comments.AddRange(
             firstTopLevelComment,
             secondTopLevelComment,
-            reply);
+            reply,
+            nestedReply);
         await _dbContext.SaveChangesAsync();
 
         var parameters = new GetCommentsParameters(
@@ -103,6 +111,12 @@ public sealed class CommentRepositoryTests : IAsyncLifetime
         Assert.Contains(result.Items, item => item.Id == firstTopLevelComment.Id);
         Assert.Contains(result.Items, item => item.Id == secondTopLevelComment.Id);
         Assert.DoesNotContain(result.Items, item => item.Id == reply.Id);
+        var parent = Assert.Single(
+            result.Items,
+            item => item.Id == firstTopLevelComment.Id);
+        var returnedReply = Assert.Single(parent.Replies);
+        Assert.Equal(reply.Id, returnedReply.Id);
+        Assert.Equal(nestedReply.Id, Assert.Single(returnedReply.Replies).Id);
     }
 
     [Fact]

@@ -60,6 +60,40 @@ describe('CommentsList', () => {
     });
   });
 
+  it('renders multiple reply levels and emits the nested reply target', () => {
+    const replyHandler = vi.fn();
+    const nestedReply = createComment({
+      id: 'nested-reply-id',
+      userName: 'Nested1',
+      email: 'nested@example.com',
+      message: 'Nested reply',
+    });
+    const reply = createComment({
+      id: 'reply-id',
+      userName: 'Reply1',
+      email: 'reply@example.com',
+      message: 'First reply',
+      replies: [nestedReply],
+    });
+    fixture.componentRef.setInput('comments', [createComment({ replies: [reply] })]);
+    fixture.componentInstance.replyRequested.subscribe(replyHandler);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelectorAll('.replies')).toHaveLength(2);
+    expect(fixture.nativeElement.textContent).toContain('First reply');
+    expect(fixture.nativeElement.textContent).toContain('Nested reply');
+
+    const buttons = fixture.nativeElement.querySelectorAll(
+      'button',
+    ) as NodeListOf<HTMLButtonElement>;
+    buttons[2].click();
+
+    expect(replyHandler).toHaveBeenCalledWith({
+      id: 'nested-reply-id',
+      userName: 'Nested1',
+    });
+  });
+
   function createComment(overrides: Partial<CommentResponse> = {}): CommentResponse {
     return {
       id: 'comment-id',
@@ -80,6 +114,7 @@ describe('CommentsList', () => {
           downloadUrl: '/api/comments/comment-id/attachments/attachment-id',
         },
       ],
+      replies: [],
       ...overrides,
     };
   }

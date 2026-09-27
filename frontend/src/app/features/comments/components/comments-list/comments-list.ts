@@ -1,28 +1,17 @@
-import { DatePipe } from '@angular/common';
 import { Component, input, output } from '@angular/core';
 
 import { CommentResponse } from '../../models/comment.models';
-import { CommentAttachment } from '../comment-attachment/comment-attachment';
+import { CommentItem, CommentReplyRequestedEvent } from '../comment-item/comment-item';
 
-export interface CommentReplyRequestedEvent {
-  id: string;
-  userName: string;
-}
+export type { CommentReplyRequestedEvent } from '../comment-item/comment-item';
 
 @Component({
   selector: 'app-comments-list',
-  imports: [DatePipe, CommentAttachment],
+  imports: [CommentItem],
   templateUrl: './comments-list.html',
   styleUrl: './comments-list.scss',
 })
 export class CommentsList {
   readonly comments = input.required<readonly CommentResponse[]>();
   readonly replyRequested = output<CommentReplyRequestedEvent>();
-
-  protected requestReply(comment: CommentResponse): void {
-    this.replyRequested.emit({
-      id: comment.id,
-      userName: comment.userName,
-    });
-  }
 }

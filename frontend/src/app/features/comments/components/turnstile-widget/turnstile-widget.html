@@ -1,0 +1,5 @@
+<div #container aria-label="Перевірка CAPTCHA"></div>
+
+@if (errorMessage(); as error) {
+  <small role="alert">{{ error }}</small>
+}

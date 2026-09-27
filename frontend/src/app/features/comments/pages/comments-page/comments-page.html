@@ -1,6 +1,12 @@
 <main>
   <h1>Коментарі</h1>
 
+  <app-comment-form (commentCreated)="onCommentCreated($event)" />
+
+  @if (submissionWarning(); as warning) {
+    <p role="alert">{{ warning }}</p>
+  }
+
   @if (isLoading()) {
     <p>Завантаження коментарів...</p>
   } @else if (errorMessage(); as error) {
@@ -23,6 +29,21 @@
             </header>
 
             <p>{{ comment.message }}</p>
+
+            <button type="button" (click)="startReply(comment.id, comment.userName)">
+              Відповісти
+            </button>
+
+            @if (replyingTo(); as reply) {
+              @if (reply.id === comment.id) {
+                <app-comment-form
+                  [parentCommentId]="comment.id"
+                  [replyToUserName]="comment.userName"
+                  (commentCreated)="onCommentCreated($event)"
+                  (replyCancelled)="cancelReply()"
+                />
+              }
+            }
           </article>
         }
       </section>

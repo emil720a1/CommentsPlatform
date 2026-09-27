@@ -3,7 +3,13 @@ import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
-import { GetCommentsParams, GetCommentsResponse } from '../models/comment.models';
+import {
+  CreateCommentRequest,
+  CreateCommentResponse,
+  GetCommentsParams,
+  GetCommentsResponse,
+  UploadAttachmentResponse,
+} from '../models/comment.models';
 
 @Injectable({
   providedIn: 'root',
@@ -35,5 +41,20 @@ export class CommentsApiService {
     return this.http.get<GetCommentsResponse>(this.commentsUrl, {
       params: httpParams,
     });
+  }
+
+  createComment(request: CreateCommentRequest): Observable<CreateCommentResponse> {
+    return this.http.post<CreateCommentResponse>(this.commentsUrl, request);
+  }
+
+  uploadAttachment(commentId: string, file: File): Observable<UploadAttachmentResponse> {
+    const formData = new FormData();
+
+    formData.append('file', file, file.name);
+
+    return this.http.post<UploadAttachmentResponse>(
+      `${this.commentsUrl}/${commentId}/attachments`,
+      formData,
+    );
   }
 }

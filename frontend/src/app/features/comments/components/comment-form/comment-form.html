@@ -1,0 +1,128 @@
+<section>
+  @if (replyToUserName(); as userName) {
+    <h3>Відповідь для {{ userName }}</h3>
+  } @else {
+    <h2>Додати коментар</h2>
+  }
+
+  @if (successMessage(); as message) {
+    <p role="status">{{ message }}</p>
+  }
+
+  @if (apiErrorMessage(); as error) {
+    <p role="alert">{{ error }}</p>
+  }
+
+  <form [formGroup]="commentForm" (ngSubmit)="onSubmit()" novalidate>
+    <div>
+      <label [for]="fieldIdPrefix + '-userName'">Ім’я користувача</label>
+      <input
+        [id]="fieldIdPrefix + '-userName'"
+        type="text"
+        formControlName="userName"
+        autocomplete="username"
+      />
+
+      @if (commentForm.controls.userName.touched) {
+        @if (commentForm.controls.userName.hasError('required')) {
+          <small role="alert">Введіть ім’я користувача.</small>
+        } @else if (commentForm.controls.userName.hasError('pattern')) {
+          <small role="alert">Ім’я може містити лише латинські літери та цифри.</small>
+        }
+      }
+    </div>
+
+    <div>
+      <label [for]="fieldIdPrefix + '-email'">Email</label>
+      <input
+        [id]="fieldIdPrefix + '-email'"
+        type="email"
+        formControlName="email"
+        autocomplete="email"
+      />
+
+      @if (commentForm.controls.email.touched) {
+        @if (commentForm.controls.email.hasError('required')) {
+          <small role="alert">Введіть email.</small>
+        } @else if (commentForm.controls.email.hasError('email')) {
+          <small role="alert">Введіть коректний email.</small>
+        }
+      }
+    </div>
+
+    <div>
+      <label [for]="fieldIdPrefix + '-homePage'">Домашня сторінка</label>
+      <input
+        [id]="fieldIdPrefix + '-homePage'"
+        type="url"
+        formControlName="homePage"
+        autocomplete="url"
+        placeholder="https://example.com"
+      />
+
+      @if (
+        commentForm.controls.homePage.touched && commentForm.controls.homePage.hasError('httpUrl')
+      ) {
+        <small role="alert">Введіть адресу, яка починається з http:// або https://.</small>
+      }
+    </div>
+
+    <div>
+      <label [for]="fieldIdPrefix + '-message'">Повідомлення</label>
+      <textarea [id]="fieldIdPrefix + '-message'" formControlName="message" rows="5"></textarea>
+
+      @if (
+        commentForm.controls.message.touched &&
+        (commentForm.controls.message.hasError('required') ||
+          commentForm.controls.message.hasError('whitespace'))
+      ) {
+        <small role="alert">Введіть повідомлення.</small>
+      }
+    </div>
+
+    <div>
+      <label [for]="fieldIdPrefix + '-attachment'">Attachment</label>
+      <input
+        #attachmentInput
+        [id]="fieldIdPrefix + '-attachment'"
+        type="file"
+        accept="image/jpeg,image/png,image/gif,text/plain"
+        [attr.aria-describedby]="fieldIdPrefix + '-attachmentHint'"
+        (change)="onFileSelected($event)"
+      />
+
+      <small [id]="fieldIdPrefix + '-attachmentHint'">
+        Необов’язковий файл: JPEG, PNG, GIF або TXT, максимум 5 MiB.
+      </small>
+
+      @if (attachmentError(); as error) {
+        <small role="alert">{{ error }}</small>
+      }
+
+      @if (selectedFile(); as file) {
+        <p>Вибрано файл: {{ file.name }}</p>
+      }
+    </div>
+
+    <div>
+      <app-turnstile-widget (tokenChange)="onCaptchaTokenChange($event)" />
+
+      @if (
+        commentForm.controls.captchaToken.touched &&
+        commentForm.controls.captchaToken.hasError('required')
+      ) {
+        <small role="alert">Підтвердьте CAPTCHA.</small>
+      }
+    </div>
+
+    <button type="submit" [disabled]="isSubmitting()">
+      {{ isSubmitting() ? 'Надсилання...' : 'Надіслати' }}
+    </button>
+
+    @if (parentCommentId() !== null) {
+      <button type="button" [disabled]="isSubmitting()" (click)="cancelReply()">
+        Скасувати відповідь
+      </button>
+    }
+  </form>
+</section>

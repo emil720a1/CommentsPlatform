@@ -79,21 +79,11 @@
         >
           <strong>Ж</strong>
         </button>
-        <button type="button" title="Курсив" aria-label="Курсив" (click)="applyInlineFormat('em')">
-          <em>К</em>
+        <button type="button" title="Курсив" aria-label="Курсив" (click)="applyInlineFormat('i')">
+          <i>К</i>
         </button>
         <button type="button" title="Посилання" (click)="applyLinkFormat()">Посилання</button>
         <button type="button" title="Код" (click)="applyInlineFormat('code')">Код</button>
-        <button type="button" title="Блок коду" (click)="applyBlockFormat('pre')">Блок коду</button>
-        <button type="button" title="Цитата" (click)="applyBlockFormat('blockquote')">
-          Цитата
-        </button>
-        <button type="button" title="Маркований список" (click)="applyListFormat('ul')">
-          Список
-        </button>
-        <button type="button" title="Нумерований список" (click)="applyListFormat('ol')">
-          1. Список
-        </button>
       </div>
 
       <textarea

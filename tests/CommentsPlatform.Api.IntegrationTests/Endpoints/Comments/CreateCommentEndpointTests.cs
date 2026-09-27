@@ -141,11 +141,15 @@ public sealed class CreateCommentEndpointTests
         await ClearCommentsAsync();
 
         const string unsafeMessage =
-            "<p>Hello <strong>world</strong></p>" +
+            "Hello <strong>world</strong> <i>today</i> " +
+            "<code>value</code>" +
+            "<a href=\"https://example.com\" title=\"Example\">link</a>" +
             "<script>alert('xss')</script>";
 
         const string expectedMessage =
-            "<p>Hello <strong>world</strong></p>";
+            "Hello <strong>world</strong> <i>today</i> " +
+            "<code>value</code>" +
+            "<a href=\"https://example.com\" title=\"Example\">link</a>";
 
         var request = new CreateCommentRequest(
             "User1",

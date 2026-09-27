@@ -170,19 +170,23 @@ describe('CommentForm', () => {
 
     clickToolbarButton('Курсив');
 
-    expect(textarea.value).toBe('Hello <em>текст</em>');
+    expect(textarea.value).toBe('Hello <i>текст</i>');
     expect(textarea.value.slice(textarea.selectionStart, textarea.selectionEnd)).toBe('текст');
   });
 
   it('creates an http link for selected text', () => {
-    vi.spyOn(window, 'prompt').mockReturnValue('https://example.com?a=1&b=2');
+    vi.spyOn(window, 'prompt')
+      .mockReturnValueOnce('https://example.com?a=1&b=2')
+      .mockReturnValueOnce('Example website');
     setInputValue('textarea', 'Open website');
     const textarea = getTextArea();
     textarea.setSelectionRange(5, 12);
 
     clickToolbarButton('Посилання');
 
-    expect(textarea.value).toBe('Open <a href="https://example.com?a=1&amp;b=2">website</a>');
+    expect(textarea.value).toBe(
+      'Open <a href="https://example.com?a=1&amp;b=2" title="Example website">website</a>',
+    );
   });
 
   it('rejects an unsafe link scheme without changing the message', () => {
@@ -199,14 +203,27 @@ describe('CommentForm', () => {
     );
   });
 
-  it('formats every selected line as a list item', () => {
-    setInputValue('textarea', 'first\nsecond');
+  it('wraps selected message text in a code tag', () => {
+    setInputValue('textarea', 'const value = 1;');
     const textarea = getTextArea();
     textarea.select();
 
-    clickToolbarButton('Маркований список');
+    clickToolbarButton('Код');
 
-    expect(textarea.value).toBe('<ul>\n<li>first</li>\n<li>second</li>\n</ul>');
+    expect(textarea.value).toBe('<code>const value = 1;</code>');
+  });
+
+  it('offers only the supported HTML formatting actions', () => {
+    const buttons = Array.from(
+      fixture.nativeElement.querySelectorAll('.formatting-toolbar button'),
+    ) as HTMLButtonElement[];
+
+    expect(buttons.map((button) => button.title)).toEqual([
+      'Жирний текст',
+      'Курсив',
+      'Посилання',
+      'Код',
+    ]);
   });
 
   function fillRequiredFields(): void {

@@ -15,16 +15,10 @@ public sealed class HtmlSanitizerService : ApplicationHtmlSanitizer
         _sanitizer.AllowedTags.Clear();
         _sanitizer.AllowedTags.UnionWith(
         [
-            "p",
-            "strong",
-            "em",
-            "ul",
-            "ol",
-            "li",
-            "blockquote",
+            "a",
             "code",
-            "pre",
-            "a"
+            "i",
+            "strong",
         ]);
 
         _sanitizer.AllowedAttributes.Clear();

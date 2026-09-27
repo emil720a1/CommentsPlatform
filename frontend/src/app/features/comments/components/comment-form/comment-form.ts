@@ -110,28 +110,8 @@ export class CommentForm {
     control.updateValueAndValidity();
   }
 
-  protected applyInlineFormat(tag: 'strong' | 'em' | 'code'): void {
+  protected applyInlineFormat(tag: 'strong' | 'i' | 'code'): void {
     this.wrapSelection(`<${tag}>`, `</${tag}>`, 'текст');
-  }
-
-  protected applyBlockFormat(tag: 'blockquote' | 'pre'): void {
-    this.wrapSelection(`<${tag}>`, `</${tag}>`, 'текст');
-  }
-
-  protected applyListFormat(tag: 'ul' | 'ol'): void {
-    const selection = this.getSelection();
-
-    if (selection === null) {
-      return;
-    }
-
-    const items = (selection.text || 'елемент списку')
-      .split(/\r?\n/)
-      .map((item) => `<li>${item}</li>`)
-      .join('\n');
-    const markup = `<${tag}>\n${items}\n</${tag}>`;
-
-    this.replaceSelection(selection, markup, selection.start, selection.start + markup.length);
   }
 
   protected applyLinkFormat(): void {
@@ -155,8 +135,15 @@ export class CommentForm {
       return;
     }
 
+    const enteredTitle = window.prompt('Введіть опис посилання:', selection.text);
+
+    if (enteredTitle === null) {
+      this.messageInput?.nativeElement.focus();
+      return;
+    }
+
     const text = selection.text || 'посилання';
-    const markup = `<a href="${this.escapeAttribute(url)}">${text}</a>`;
+    const markup = `<a href="${this.escapeAttribute(url)}" title="${this.escapeAttribute(enteredTitle.trim())}">${text}</a>`;
     const contentStart = selection.start + markup.indexOf(text);
 
     this.replaceSelection(selection, markup, contentStart, contentStart + text.length);

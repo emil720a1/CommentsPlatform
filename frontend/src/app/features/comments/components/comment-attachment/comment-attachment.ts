@@ -2,9 +2,11 @@ import { Component, computed, input, signal } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import { AttachmentResponse } from '../../models/comment.models';
+import { ImageLightbox } from '../image-lightbox/image-lightbox';
 
 @Component({
   selector: 'app-comment-attachment',
+  imports: [ImageLightbox],
   templateUrl: './comment-attachment.html',
   styleUrl: './comment-attachment.scss',
 })
@@ -12,6 +14,7 @@ export class CommentAttachment {
   readonly attachment = input.required<AttachmentResponse>();
 
   protected readonly previewFailed = signal(false);
+  protected readonly lightboxOpen = signal(false);
 
   protected readonly downloadUrl = computed(() =>
     new URL(this.attachment().downloadUrl, environment.apiUrl).toString(),
@@ -31,6 +34,14 @@ export class CommentAttachment {
 
   protected onPreviewError(): void {
     this.previewFailed.set(true);
+  }
+
+  protected openLightbox(): void {
+    this.lightboxOpen.set(true);
+  }
+
+  protected closeLightbox(): void {
+    this.lightboxOpen.set(false);
   }
 
   private formatFileSize(bytes: number): string {

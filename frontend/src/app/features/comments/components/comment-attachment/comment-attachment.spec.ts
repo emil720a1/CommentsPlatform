@@ -32,7 +32,7 @@ describe('CommentAttachment', () => {
     expect(image.alt).toBe('photo.png');
     expect(image.src).toContain('/api/comments/comment-id/attachments/attachment-id');
     expect(image.src).toContain('inline=true');
-    expect(links[1].textContent).toContain('photo.png');
+    expect(links[0].textContent).toContain('photo.png');
     expect(fixture.nativeElement.textContent).toContain('2.0 KB');
   });
 
@@ -61,6 +61,23 @@ describe('CommentAttachment', () => {
     expect(fixture.nativeElement.querySelector('img')).toBeNull();
     expect(fixture.nativeElement.textContent).toContain('Попередній перегляд недоступний.');
     expect(fixture.nativeElement.querySelector('a')).not.toBeNull();
+  });
+
+  it('opens and closes the image lightbox without changing the download link', () => {
+    fixture.componentRef.setInput('attachment', createAttachment());
+    fixture.detectChanges();
+
+    const downloadLink = fixture.nativeElement.querySelector('a') as HTMLAnchorElement;
+    (fixture.nativeElement.querySelector('.preview-button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(downloadLink.hasAttribute('download')).toBe(true);
+
+    (fixture.nativeElement.querySelector('.close-button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[role="dialog"]')).toBeNull();
   });
 
   function createAttachment(overrides: Partial<AttachmentResponse> = {}): AttachmentResponse {

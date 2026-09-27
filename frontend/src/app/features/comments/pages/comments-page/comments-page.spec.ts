@@ -92,11 +92,9 @@ describe('CommentsPage', () => {
     expect(homePageLink.rel).toContain('noopener');
   });
 
-  it('restores pagination and sorting from the URL after component recreation', async () => {
-    await router.navigateByUrl('/?page=3&pageSize=10&sortBy=CreatedAt&sortDirection=Ascending');
-    await fixture.whenStable();
-
+  it('restores the current page and sorting from the URL with a fixed page size', async () => {
     fixture.destroy();
+    await router.navigateByUrl('/?page=3&pageSize=10&sortBy=CreatedAt&sortDirection=Ascending');
     commentsApi.getComments.mockClear();
     fixture = TestBed.createComponent(CommentsPage);
     component = fixture.componentInstance;
@@ -105,7 +103,77 @@ describe('CommentsPage', () => {
 
     expect(commentsApi.getComments).toHaveBeenCalledWith({
       page: 3,
-      pageSize: 10,
+      pageSize: 25,
+      sortBy: 'CreatedAt',
+      sortDirection: 'Ascending',
+    });
+  });
+
+  it('disables Previous on the first page and enables Next', () => {
+    const previousButton = getButton('Попередня');
+    const nextButton = getButton('Наступна');
+
+    expect(previousButton.disabled).toBe(true);
+    expect(nextButton.disabled).toBe(false);
+    expect(fixture.nativeElement.textContent).toContain('Сторінка 1 із 3');
+  });
+
+  it('loads the next page and preserves it in the URL', async () => {
+    getButton('Наступна').click();
+    await fixture.whenStable();
+
+    expect(router.url).toContain('page=2');
+    expect(commentsApi.getComments).toHaveBeenLastCalledWith({
+      page: 2,
+      pageSize: 25,
+      sortBy: 'CreatedAt',
+      sortDirection: 'Descending',
+    });
+  });
+
+  it('loads the previous page and disables Next on the last page', async () => {
+    commentsApi.getComments.mockReturnValue(
+      of({
+        ...commentsResponse,
+        page: 3,
+        hasPreviousPage: true,
+        hasNextPage: false,
+      }),
+    );
+
+    await router.navigate([], { queryParams: { page: 3 } });
+    fixture.detectChanges();
+
+    expect(getButton('Попередня').disabled).toBe(false);
+    expect(getButton('Наступна').disabled).toBe(true);
+
+    getButton('Попередня').click();
+    await fixture.whenStable();
+
+    expect(router.url).toContain('page=2');
+    expect(commentsApi.getComments).toHaveBeenLastCalledWith({
+      page: 2,
+      pageSize: 25,
+      sortBy: 'CreatedAt',
+      sortDirection: 'Descending',
+    });
+  });
+
+  it('resets to page one when sorting changes', async () => {
+    await router.navigate([], { queryParams: { page: 3 } });
+    await fixture.whenStable();
+    commentsApi.getComments.mockClear();
+
+    await router.navigate([], {
+      queryParams: { sortDirection: 'Ascending' },
+      queryParamsHandling: 'merge',
+    });
+    await fixture.whenStable();
+
+    expect(router.url).toContain('page=1');
+    expect(commentsApi.getComments).toHaveBeenCalledWith({
+      page: 1,
+      pageSize: 25,
       sortBy: 'CreatedAt',
       sortDirection: 'Ascending',
     });
@@ -205,4 +273,16 @@ describe('CommentsPage', () => {
 
     expect(fixture.nativeElement.textContent).not.toContain('Відповідь для Alice1');
   });
+
+  function getButton(label: string): HTMLButtonElement {
+    const button = Array.from(
+      fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
+    ).find((candidate) => candidate.textContent?.trim() === label);
+
+    if (!button) {
+      throw new Error(`Button "${label}" was not found.`);
+    }
+
+    return button;
+  }
 });

@@ -7,6 +7,29 @@
     <p role="alert">{{ warning }}</p>
   }
 
+  <section class="sorting" aria-label="Сортування коментарів">
+    <label for="comment-sort-field">Сортувати за</label>
+    <select
+      id="comment-sort-field"
+      [value]="parameters().sortBy"
+      (change)="changeSortField($event)"
+    >
+      <option value="CreatedAt">Датою створення</option>
+      <option value="UserName">Ім’ям користувача</option>
+      <option value="Email">Email</option>
+    </select>
+
+    <label for="comment-sort-direction">Напрямок</label>
+    <select
+      id="comment-sort-direction"
+      [value]="parameters().sortDirection"
+      (change)="changeSortDirection($event)"
+    >
+      <option value="Descending">За спаданням</option>
+      <option value="Ascending">За зростанням</option>
+    </select>
+  </section>
+
   @if (isLoading()) {
     <p aria-live="polite">Завантаження коментарів...</p>
   } @else if (errorMessage(); as error) {

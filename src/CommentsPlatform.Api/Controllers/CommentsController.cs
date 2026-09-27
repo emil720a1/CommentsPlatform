@@ -220,6 +220,14 @@ public class CommentsController : ControllerBase
     {
         switch (sortBy)
         {
+            case CommentSortField.UserName:
+                mappedSortBy = ApplicationCommentSortBy.UserName;
+                return true;
+
+            case CommentSortField.Email:
+                mappedSortBy = ApplicationCommentSortBy.Email;
+                return true;
+
             case CommentSortField.CreatedAt:
                 mappedSortBy = ApplicationCommentSortBy.CreatedAt;
                 return true;

@@ -2,6 +2,7 @@ using CommentsPlatform.Application.Common.Abstractions.Persistence;
 using CommentsPlatform.Application.Common.Abstractions.Storage;
 using CommentsPlatform.Application.Features.Attachments.Download;
 using CommentsPlatform.Domain;
+using ErrorOr;
 using Moq;
 
 namespace CommentsPlatform.Application.UnitTests.Features.Attachments.Download;
@@ -98,6 +99,54 @@ public sealed class DownloadAttachmentQueryHandlerTests
 
         Assert.True(result.IsError);
         Assert.Equal(DownloadAttachmentErrors.NotFound, result.FirstError);
+    }
+
+    [Fact]
+    public async Task Handle_WhenStorageReadFails_ReturnsStorageFailure()
+    {
+        var result = await HandleWithStorageExceptionAsync(
+            new IOException("Simulated storage failure."));
+
+        Assert.True(result.IsError);
+        Assert.Equal(DownloadAttachmentErrors.StorageFailure, result.FirstError);
+    }
+
+    [Fact]
+    public async Task Handle_WhenStorageAccessIsDenied_ReturnsStorageFailure()
+    {
+        var result = await HandleWithStorageExceptionAsync(
+            new UnauthorizedAccessException("Simulated access failure."));
+
+        Assert.True(result.IsError);
+        Assert.Equal(DownloadAttachmentErrors.StorageFailure, result.FirstError);
+    }
+
+    private async Task<ErrorOr<DownloadAttachmentResult>>
+        HandleWithStorageExceptionAsync(Exception exception)
+    {
+        var comment = CreateComment();
+        var attachment = comment.AddAttachment(
+            "notes.txt",
+            "comments/id/file.txt",
+            "text/plain",
+            3,
+            DateTimeOffset.UtcNow);
+        _repository.Setup(repository => repository.GetAttachmentAsync(
+                comment.Id,
+                attachment.Id,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(attachment);
+        _storage.Setup(storage => storage.OpenReadAsync(
+                attachment.StorageKey,
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(exception);
+        var handler = new DownloadAttachmentQueryHandler(
+            _repository.Object,
+            _storage.Object);
+
+        return await handler.Handle(
+            new DownloadAttachmentQuery(comment.Id, attachment.Id),
+            CancellationToken.None);
     }
 
     private static Comment CreateComment() => Comment.Create(

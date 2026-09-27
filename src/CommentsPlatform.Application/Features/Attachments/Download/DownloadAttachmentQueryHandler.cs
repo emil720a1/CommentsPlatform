@@ -58,7 +58,11 @@ public sealed class DownloadAttachmentQueryHandler
         {
             return DownloadAttachmentErrors.NotFound;
         }
-        catch
+        catch (IOException)
+        {
+            return DownloadAttachmentErrors.StorageFailure;
+        }
+        catch (UnauthorizedAccessException)
         {
             return DownloadAttachmentErrors.StorageFailure;
         }

@@ -358,8 +358,8 @@ public sealed class CreateCommentCommandHandlerTests
     public async Task Handle_WithUnsafeHtml_PersistsSanitizedMessage()
     {
         const string unsafeMessage =
-            "<p>Hello</p><script>alert('xss')</script>";
-        const string sanitizedMessage = "<p>Hello</p>";
+            "<strong>Hello</strong><script>alert('xss')</script>";
+        const string sanitizedMessage = "<strong>Hello</strong>";
 
         var command = new CreateCommentCommand(
             "user123",

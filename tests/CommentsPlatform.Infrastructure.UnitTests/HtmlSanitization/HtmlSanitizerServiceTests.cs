@@ -10,7 +10,7 @@ public sealed class HtmlSanitizerServiceTests
     public void Sanitize_WithAllowedHtml_PreservesAllowedElements()
     {
         const string html =
-            "<p>Hello <strong>world</strong></p>";
+            "<strong>Hello</strong> <i>world</i> <code>value</code>";
 
         var result = _sanitizer.Sanitize(html);
 
@@ -21,11 +21,11 @@ public sealed class HtmlSanitizerServiceTests
     public void Sanitize_WithScriptElement_RemovesScriptElement()
     {
         const string html =
-            "<p>Safe</p><script>alert('xss')</script>";
+            "<strong>Safe</strong><script>alert('xss')</script>";
 
         var result = _sanitizer.Sanitize(html);
 
-        Assert.Equal("<p>Safe</p>", result);
+        Assert.Equal("<strong>Safe</strong>", result);
         Assert.DoesNotContain(
             "script",
             result,
@@ -40,11 +40,11 @@ public sealed class HtmlSanitizerServiceTests
     public void Sanitize_WithEventAttribute_RemovesEventAttribute()
     {
         const string html =
-            """<p onclick="alert('xss')">Safe</p>""";
+            """<strong onclick="alert('xss')">Safe</strong>""";
 
         var result = _sanitizer.Sanitize(html);
 
-        Assert.Equal("<p>Safe</p>", result);
+        Assert.Equal("<strong>Safe</strong>", result);
         Assert.DoesNotContain(
             "onclick",
             result,
@@ -81,11 +81,11 @@ public sealed class HtmlSanitizerServiceTests
     public void Sanitize_WithDisallowedElement_RemovesElementAndItsContent()
     {
         const string html =
-            "<p>Before</p><marquee>Visible text</marquee>";
+            "<strong>Before</strong><marquee>Visible text</marquee>";
 
         var result = _sanitizer.Sanitize(html);
 
-        Assert.Equal("<p>Before</p>", result);
+        Assert.Equal("<strong>Before</strong>", result);
         Assert.DoesNotContain(
             "marquee",
             result,
@@ -100,11 +100,11 @@ public sealed class HtmlSanitizerServiceTests
     public void Sanitize_WithImageOnError_RemovesUnsafeImage()
     {
         const string html =
-            """<p>Safe</p><img src="invalid" onerror="alert('xss')">""";
+            """<strong>Safe</strong><img src="invalid" onerror="alert('xss')">""";
 
         var result = _sanitizer.Sanitize(html);
 
-        Assert.Equal("<p>Safe</p>", result);
+        Assert.Equal("<strong>Safe</strong>", result);
         Assert.DoesNotContain(
             "img",
             result,

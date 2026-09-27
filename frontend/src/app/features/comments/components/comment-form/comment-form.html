@@ -69,7 +69,48 @@
 
     <div>
       <label [for]="fieldIdPrefix + '-message'">Повідомлення</label>
-      <textarea [id]="fieldIdPrefix + '-message'" formControlName="message" rows="5"></textarea>
+
+      <div class="formatting-toolbar" role="toolbar" aria-label="Форматування повідомлення">
+        <button
+          type="button"
+          title="Жирний текст"
+          aria-label="Жирний текст"
+          (click)="applyInlineFormat('strong')"
+        >
+          <strong>Ж</strong>
+        </button>
+        <button type="button" title="Курсив" aria-label="Курсив" (click)="applyInlineFormat('em')">
+          <em>К</em>
+        </button>
+        <button type="button" title="Посилання" (click)="applyLinkFormat()">Посилання</button>
+        <button type="button" title="Код" (click)="applyInlineFormat('code')">Код</button>
+        <button type="button" title="Блок коду" (click)="applyBlockFormat('pre')">Блок коду</button>
+        <button type="button" title="Цитата" (click)="applyBlockFormat('blockquote')">
+          Цитата
+        </button>
+        <button type="button" title="Маркований список" (click)="applyListFormat('ul')">
+          Список
+        </button>
+        <button type="button" title="Нумерований список" (click)="applyListFormat('ol')">
+          1. Список
+        </button>
+      </div>
+
+      <textarea
+        #messageInput
+        [id]="fieldIdPrefix + '-message'"
+        formControlName="message"
+        rows="5"
+        [attr.aria-describedby]="fieldIdPrefix + '-formattingHint'"
+      ></textarea>
+
+      <small [id]="fieldIdPrefix + '-formattingHint'">
+        Виділіть текст і виберіть дозволене форматування. HTML буде перевірено сервером.
+      </small>
+
+      @if (formattingError(); as error) {
+        <small role="alert">{{ error }}</small>
+      }
 
       @if (
         commentForm.controls.message.touched &&

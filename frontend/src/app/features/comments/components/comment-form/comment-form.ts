@@ -65,6 +65,9 @@ export class CommentForm {
   @ViewChild('attachmentInput')
   private attachmentInput?: ElementRef<HTMLInputElement>;
 
+  @ViewChild('messageInput')
+  private messageInput?: ElementRef<HTMLTextAreaElement>;
+
   readonly parentCommentId = input<string | null>(null);
 
   readonly replyToUserName = input<string | null>(null);
@@ -85,6 +88,8 @@ export class CommentForm {
 
   protected readonly apiErrorMessage = signal<string | null>(null);
 
+  protected readonly formattingError = signal<string | null>(null);
+
   protected readonly commentForm = this.formBuilder.nonNullable.group({
     userName: ['', [Validators.required, Validators.pattern(/^[A-Za-z0-9]+$/)]],
     email: ['', [Validators.required, Validators.email]],
@@ -103,6 +108,58 @@ export class CommentForm {
     }
 
     control.updateValueAndValidity();
+  }
+
+  protected applyInlineFormat(tag: 'strong' | 'em' | 'code'): void {
+    this.wrapSelection(`<${tag}>`, `</${tag}>`, 'текст');
+  }
+
+  protected applyBlockFormat(tag: 'blockquote' | 'pre'): void {
+    this.wrapSelection(`<${tag}>`, `</${tag}>`, 'текст');
+  }
+
+  protected applyListFormat(tag: 'ul' | 'ol'): void {
+    const selection = this.getSelection();
+
+    if (selection === null) {
+      return;
+    }
+
+    const items = (selection.text || 'елемент списку')
+      .split(/\r?\n/)
+      .map((item) => `<li>${item}</li>`)
+      .join('\n');
+    const markup = `<${tag}>\n${items}\n</${tag}>`;
+
+    this.replaceSelection(selection, markup, selection.start, selection.start + markup.length);
+  }
+
+  protected applyLinkFormat(): void {
+    const selection = this.getSelection();
+
+    if (selection === null) {
+      return;
+    }
+
+    const enteredUrl = window.prompt('Введіть адресу посилання (http:// або https://):');
+
+    if (enteredUrl === null) {
+      return;
+    }
+
+    const url = enteredUrl.trim();
+
+    if (!this.isSafeHttpUrl(url)) {
+      this.formattingError.set('Посилання повинно починатися з http:// або https://.');
+      this.messageInput?.nativeElement.focus();
+      return;
+    }
+
+    const text = selection.text || 'посилання';
+    const markup = `<a href="${this.escapeAttribute(url)}">${text}</a>`;
+    const contentStart = selection.start + markup.indexOf(text);
+
+    this.replaceSelection(selection, markup, contentStart, contentStart + text.length);
   }
 
   protected onFileSelected(event: Event): void {
@@ -222,6 +279,69 @@ export class CommentForm {
   private rejectFile(inputElement: HTMLInputElement, message: string): void {
     this.attachmentError.set(message);
     inputElement.value = '';
+  }
+
+  private wrapSelection(openingTag: string, closingTag: string, placeholder: string): void {
+    const selection = this.getSelection();
+
+    if (selection === null) {
+      return;
+    }
+
+    const text = selection.text || placeholder;
+    const markup = `${openingTag}${text}${closingTag}`;
+    const contentStart = selection.start + openingTag.length;
+
+    this.replaceSelection(selection, markup, contentStart, contentStart + text.length);
+  }
+
+  private getSelection(): { start: number; end: number; text: string } | null {
+    const textarea = this.messageInput?.nativeElement;
+
+    if (textarea === undefined) {
+      return null;
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+
+    return { start, end, text: textarea.value.slice(start, end) };
+  }
+
+  private replaceSelection(
+    selection: { start: number; end: number },
+    markup: string,
+    selectionStart: number,
+    selectionEnd: number,
+  ): void {
+    const control = this.commentForm.controls.message;
+    const value = control.value;
+    const nextValue = value.slice(0, selection.start) + markup + value.slice(selection.end);
+
+    control.setValue(nextValue);
+    control.markAsDirty();
+    this.formattingError.set(null);
+
+    const textarea = this.messageInput?.nativeElement;
+    textarea?.focus();
+    textarea?.setSelectionRange(selectionStart, selectionEnd);
+  }
+
+  private isSafeHttpUrl(value: string): boolean {
+    try {
+      const url = new URL(value);
+      return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+
+  private escapeAttribute(value: string): string {
+    return value
+      .replaceAll('&', '&amp;')
+      .replaceAll('"', '&quot;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;');
   }
 
   private resetAfterCreatedComment(): void {

@@ -151,6 +151,64 @@ describe('CommentForm', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Technical provider details');
   });
 
+  it('wraps selected message text in an allowed inline tag', () => {
+    setInputValue('textarea', 'Hello world');
+    const textarea = getTextArea();
+    textarea.setSelectionRange(6, 11);
+
+    clickToolbarButton('Жирний текст');
+
+    expect(textarea.value).toBe('Hello <strong>world</strong>');
+    expect(textarea.selectionStart).toBe(14);
+    expect(textarea.selectionEnd).toBe(19);
+  });
+
+  it('inserts a placeholder and selects it when no message text is selected', () => {
+    setInputValue('textarea', 'Hello ');
+    const textarea = getTextArea();
+    textarea.setSelectionRange(6, 6);
+
+    clickToolbarButton('Курсив');
+
+    expect(textarea.value).toBe('Hello <em>текст</em>');
+    expect(textarea.value.slice(textarea.selectionStart, textarea.selectionEnd)).toBe('текст');
+  });
+
+  it('creates an http link for selected text', () => {
+    vi.spyOn(window, 'prompt').mockReturnValue('https://example.com?a=1&b=2');
+    setInputValue('textarea', 'Open website');
+    const textarea = getTextArea();
+    textarea.setSelectionRange(5, 12);
+
+    clickToolbarButton('Посилання');
+
+    expect(textarea.value).toBe('Open <a href="https://example.com?a=1&amp;b=2">website</a>');
+  });
+
+  it('rejects an unsafe link scheme without changing the message', () => {
+    vi.spyOn(window, 'prompt').mockReturnValue('javascript:alert(1)');
+    setInputValue('textarea', 'website');
+    const textarea = getTextArea();
+    textarea.select();
+
+    clickToolbarButton('Посилання');
+
+    expect(textarea.value).toBe('website');
+    expect(fixture.nativeElement.textContent).toContain(
+      'Посилання повинно починатися з http:// або https://.',
+    );
+  });
+
+  it('formats every selected line as a list item', () => {
+    setInputValue('textarea', 'first\nsecond');
+    const textarea = getTextArea();
+    textarea.select();
+
+    clickToolbarButton('Маркований список');
+
+    expect(textarea.value).toBe('<ul>\n<li>first</li>\n<li>second</li>\n</ul>');
+  });
+
   function fillRequiredFields(): void {
     setInputValue('input[type="text"]', 'Alice1');
     setInputValue('input[type="email"]', 'alice@example.com');
@@ -172,5 +230,17 @@ describe('CommentForm', () => {
 
   function getInput(selector: string): HTMLInputElement {
     return fixture.nativeElement.querySelector(selector) as HTMLInputElement;
+  }
+
+  function getTextArea(): HTMLTextAreaElement {
+    return fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
+  }
+
+  function clickToolbarButton(title: string): void {
+    const button = fixture.nativeElement.querySelector(
+      `.formatting-toolbar button[title="${title}"]`,
+    ) as HTMLButtonElement;
+    button.click();
+    fixture.detectChanges();
   }
 });

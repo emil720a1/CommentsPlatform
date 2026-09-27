@@ -5,6 +5,7 @@ using CommentsPlatform.Api.Contracts.Common;
 using CommentsPlatform.Api.Controllers;
 using CommentsPlatform.Application.Common.Models;
 using CommentsPlatform.Application.Features.Attachments.Upload;
+using CommentsPlatform.Application.Features.Attachments.Download;
 using CommentsPlatform.Application.Features.Comments.Create;
 using CommentsPlatform.Application.Features.Comments.Queries.GetComments;
 using ErrorOr;
@@ -328,13 +329,25 @@ public class CommentsControllerTests
         var cancellationToken = cancellationTokenSource.Token;
         var commentId = Guid.NewGuid();
         var createdAt = DateTimeOffset.UtcNow;
+        var attachmentId = Guid.NewGuid();
         var comment = new CommentDto(
             commentId,
             "user1",
             "https://example.com/",
             createdAt,
             "private@example.com",
-            "Test message");
+            "Test message",
+            new[]
+            {
+                new AttachmentDto(
+                    attachmentId,
+                    "photo.png",
+                    "image/png",
+                    1024,
+                    640,
+                    480,
+                    createdAt)
+            });
         var page = new PaginatedList<CommentDto>(
             new[] { comment },
             page: 2,
@@ -370,6 +383,14 @@ public class CommentsControllerTests
         Assert.Equal(comment.HomePage, responseComment.HomePage);
         Assert.Equal(createdAt, responseComment.CreatedAt);
         Assert.Equal(comment.Message, responseComment.Message);
+        var responseAttachment = Assert.Single(responseComment.Attachments);
+        Assert.Equal(attachmentId, responseAttachment.Id);
+        Assert.Equal("photo.png", responseAttachment.OriginalFileName);
+        Assert.Equal("image/png", responseAttachment.ContentType);
+        Assert.Equal(1024, responseAttachment.FileSizeBytes);
+        Assert.Equal(
+            $"/api/comments/{commentId}/attachments/{attachmentId}",
+            responseAttachment.DownloadUrl);
         Assert.Null(typeof(CommentResponse).GetProperty("Email"));
 
         _senderMock.Verify(sender => sender.Send(
@@ -380,6 +401,82 @@ public class CommentsControllerTests
                     query.SortDirection == SortDirection.Ascending),
                 cancellationToken),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task DownloadAttachment_WhenQuerySucceeds_ReturnsFileResult()
+    {
+        var commentId = Guid.NewGuid();
+        var attachmentId = Guid.NewGuid();
+        var content = new MemoryStream([1, 2, 3]);
+        ErrorOr<DownloadAttachmentResult> queryResult = new DownloadAttachmentResult(
+            content,
+            "image/png",
+            "photo.png",
+            3);
+        _senderMock.Setup(sender => sender.Send(
+                new DownloadAttachmentQuery(commentId, attachmentId),
+                CancellationToken.None))
+            .ReturnsAsync(queryResult);
+
+        var result = await _controller.DownloadAttachment(
+            commentId,
+            attachmentId,
+            inline: false,
+            CancellationToken.None);
+
+        var fileResult = Assert.IsType<FileStreamResult>(result);
+        Assert.Same(content, fileResult.FileStream);
+        Assert.Equal("image/png", fileResult.ContentType);
+        Assert.Equal("photo.png", fileResult.FileDownloadName);
+        Assert.True(fileResult.EnableRangeProcessing);
+    }
+
+    [Fact]
+    public async Task DownloadAttachment_WhenMissing_ReturnsNotFound()
+    {
+        _senderMock.Setup(sender => sender.Send(
+                It.IsAny<DownloadAttachmentQuery>(),
+                CancellationToken.None))
+            .ReturnsAsync(DownloadAttachmentErrors.NotFound);
+
+        var result = await _controller.DownloadAttachment(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            inline: false,
+            CancellationToken.None);
+
+        var errors = AssertProblemDetails(
+            result,
+            StatusCodes.Status404NotFound,
+            "Resource not found",
+            "The attachment was not found.");
+        Assert.Equal("Attachments.NotFound", Assert.Single(errors).Code);
+    }
+
+    [Fact]
+    public async Task DownloadAttachment_WhenImageIsRequestedInline_ReturnsInlineFile()
+    {
+        var content = new MemoryStream([1]);
+        _senderMock.Setup(sender => sender.Send(
+                It.IsAny<DownloadAttachmentQuery>(),
+                CancellationToken.None))
+            .ReturnsAsync(new DownloadAttachmentResult(
+                content,
+                "image/png",
+                "photo.png",
+                1));
+
+        var result = await _controller.DownloadAttachment(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            inline: true,
+            CancellationToken.None);
+
+        var fileResult = Assert.IsType<FileStreamResult>(result);
+        Assert.Equal("image/png", fileResult.ContentType);
+        Assert.Empty(fileResult.FileDownloadName);
+        Assert.True(fileResult.EnableRangeProcessing);
     }
 
     [Fact]

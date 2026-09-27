@@ -30,8 +30,10 @@ public sealed class GetCommentsQueryHandlerTests
 
         var expectedItems = new List<CommentDto>
         {
-            new(Guid.NewGuid(), "user1", null, DateTimeOffset.UtcNow, "user1@example.com", "Hello"),
-            new(Guid.NewGuid(), "user2", null, DateTimeOffset.UtcNow, "user2@example.com", "World"),
+            new(Guid.NewGuid(), "user1", null, DateTimeOffset.UtcNow,
+                "user1@example.com", "Hello", Array.Empty<AttachmentDto>()),
+            new(Guid.NewGuid(), "user2", null, DateTimeOffset.UtcNow,
+                "user2@example.com", "World", Array.Empty<AttachmentDto>()),
         };
 
         var expectedResult = new PaginatedList<CommentDto>(
@@ -138,7 +140,8 @@ public sealed class GetCommentsQueryHandlerTests
         var items = Enumerable.Range(1, 5)
             .Select(i => new CommentDto(
                 Guid.NewGuid(), $"user{i}", null,
-                DateTimeOffset.UtcNow, $"user{i}@example.com", $"Message {i}"))
+                DateTimeOffset.UtcNow, $"user{i}@example.com", $"Message {i}",
+                Array.Empty<AttachmentDto>()))
             .ToList();
 
         // 13 total items, pageSize 5 → 3 pages

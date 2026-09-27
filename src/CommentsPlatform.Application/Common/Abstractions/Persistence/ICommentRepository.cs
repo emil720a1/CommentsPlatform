@@ -12,6 +12,11 @@ public interface ICommentRepository
         Guid commentId,
         CancellationToken cancellationToken);
 
+    Task<Attachment?> GetAttachmentAsync(
+        Guid commentId,
+        Guid attachmentId,
+        CancellationToken cancellationToken);
+
     Task AddAsync(Comment comment, CancellationToken cancellationToken);
 
     Task SaveChangesAsync(

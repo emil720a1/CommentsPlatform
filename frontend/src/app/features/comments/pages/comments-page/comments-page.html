@@ -30,6 +30,10 @@
 
             <p>{{ comment.message }}</p>
 
+            @for (attachment of comment.attachments; track attachment.id) {
+              <app-comment-attachment [attachment]="attachment" />
+            }
+
             <button type="button" (click)="startReply(comment.id, comment.userName)">
               Відповісти
             </button>

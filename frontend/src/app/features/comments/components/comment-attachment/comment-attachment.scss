@@ -1,0 +1,18 @@
+.attachment {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
+  margin-block: 0.75rem;
+}
+
+img {
+  display: block;
+  max-block-size: 18rem;
+  max-inline-size: min(100%, 32rem);
+  object-fit: contain;
+}
+
+span {
+  color: #555;
+  font-size: 0.875rem;
+}

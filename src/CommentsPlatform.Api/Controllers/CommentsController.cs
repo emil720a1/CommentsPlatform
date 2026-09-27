@@ -3,6 +3,7 @@ using CommentsPlatform.Api.Contracts.Comments;
 using CommentsPlatform.Api.Contracts.Comments.Attachments;
 using CommentsPlatform.Api.Contracts.Comments.GetComments;
 using CommentsPlatform.Application.Features.Attachments.Upload;
+using CommentsPlatform.Application.Features.Attachments.Download;
 using CommentsPlatform.Application.Features.Comments.Create;
 using CommentsPlatform.Application.Features.Comments.Queries.GetComments;
 using ErrorOr;
@@ -152,7 +153,18 @@ public class CommentsController : ControllerBase
                 comment.UserName,
                 comment.HomePage,
                 comment.CreatedAt,
-                comment.Message))
+                comment.Message,
+                comment.Attachments
+                    .Select(attachment => new AttachmentResponse(
+                        attachment.Id,
+                        attachment.OriginalFileName,
+                        attachment.ContentType,
+                        attachment.FileSizeBytes,
+                        attachment.Width,
+                        attachment.Height,
+                        attachment.CreatedAt,
+                        $"/api/comments/{comment.Id}/attachments/{attachment.Id}"))
+                    .ToList()))
             .ToList();
 
         return Ok(new GetCommentsResponse(
@@ -163,6 +175,42 @@ public class CommentsController : ControllerBase
             page.TotalPages,
             page.HasPreviousPage,
             page.HasNextPage));
+    }
+
+    [HttpGet("{commentId:guid}/attachments/{attachmentId:guid}")]
+    [ProducesResponseType(typeof(FileStreamResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> DownloadAttachment(
+        Guid commentId,
+        Guid attachmentId,
+        [FromQuery] bool inline,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new DownloadAttachmentQuery(commentId, attachmentId),
+            cancellationToken);
+
+        if (result.IsError)
+        {
+            return ApiErrorMapper.Map(result.Errors);
+        }
+
+        if (inline && result.Value.ContentType.StartsWith(
+                "image/",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return File(
+                result.Value.Content,
+                result.Value.ContentType,
+                enableRangeProcessing: true);
+        }
+
+        return File(
+            result.Value.Content,
+            result.Value.ContentType,
+            result.Value.OriginalFileName,
+            enableRangeProcessing: true);
     }
 
     private static bool TryMapSortBy(

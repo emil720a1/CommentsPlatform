@@ -1,0 +1,14 @@
+<section class="attachment" [attr.aria-label]="'Вкладення ' + attachment().originalFileName">
+  @if (isImage() && !previewFailed()) {
+    <a [href]="downloadUrl()" target="_blank" rel="noopener noreferrer">
+      <img [src]="previewUrl()" [alt]="attachment().originalFileName" (error)="onPreviewError()" />
+    </a>
+  } @else if (isImage()) {
+    <p role="status">Попередній перегляд недоступний.</p>
+  }
+
+  <a [href]="downloadUrl()" download>
+    {{ attachment().originalFileName }}
+  </a>
+  <span>{{ formattedSize() }}</span>
+</section>

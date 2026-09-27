@@ -15,6 +15,7 @@ const commentsResponse: GetCommentsResponse = {
       homePage: null,
       createdAt: '2026-09-27T10:00:00Z',
       message: 'Hello world',
+      attachments: [],
     },
   ],
   page: 1,

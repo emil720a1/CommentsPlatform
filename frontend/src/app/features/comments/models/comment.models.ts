@@ -12,7 +12,7 @@ export interface GetCommentsParams {
 export interface CommentResponse {
   id: string;
   userName: string;
-  email?: string;
+  email: string;
   homePage: string | null;
   createdAt: string;
   message: string;

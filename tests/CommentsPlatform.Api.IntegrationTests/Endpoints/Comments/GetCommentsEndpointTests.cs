@@ -79,7 +79,7 @@ public sealed class GetCommentsEndpointTests
     }
 
     [Fact]
-    public async Task GetComments_WithDescendingSort_ReturnsNewestCommentsFirstAndOmitsEmail()
+    public async Task GetComments_WithDescendingSort_ReturnsNewestCommentsFirstAndIncludesEmail()
     {
         await ClearCommentsAsync();
 
@@ -124,11 +124,6 @@ public sealed class GetCommentsEndpointTests
 
         var json = await response.Content.ReadAsStringAsync();
 
-        Assert.DoesNotContain(
-            "\"email\"",
-            json,
-            StringComparison.OrdinalIgnoreCase);
-
         var result = JsonSerializer.Deserialize<GetCommentsResponse>(
             json,
             new JsonSerializerOptions
@@ -149,10 +144,12 @@ public sealed class GetCommentsEndpointTests
 
         Assert.Equal(newestComment.Id, result.Items[0].Id);
         Assert.Equal(newestComment.UserName, result.Items[0].UserName);
+        Assert.Equal(newestComment.Email, result.Items[0].Email);
         Assert.Equal(newestComment.Message, result.Items[0].Message);
 
         Assert.Equal(middleComment.Id, result.Items[1].Id);
         Assert.Equal(middleComment.UserName, result.Items[1].UserName);
+        Assert.Equal(middleComment.Email, result.Items[1].Email);
         Assert.Equal(middleComment.Message, result.Items[1].Message);
 
         Assert.DoesNotContain(

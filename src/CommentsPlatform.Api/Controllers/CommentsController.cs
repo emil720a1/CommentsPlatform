@@ -151,6 +151,7 @@ public class CommentsController : ControllerBase
             .Select(comment => new CommentResponse(
                 comment.Id,
                 comment.UserName,
+                comment.Email,
                 comment.HomePage,
                 comment.CreatedAt,
                 comment.Message,

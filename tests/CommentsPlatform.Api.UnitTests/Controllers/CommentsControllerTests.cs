@@ -380,6 +380,7 @@ public class CommentsControllerTests
         Assert.True(response.HasNextPage);
         Assert.Equal(commentId, responseComment.Id);
         Assert.Equal(comment.UserName, responseComment.UserName);
+        Assert.Equal(comment.Email, responseComment.Email);
         Assert.Equal(comment.HomePage, responseComment.HomePage);
         Assert.Equal(createdAt, responseComment.CreatedAt);
         Assert.Equal(comment.Message, responseComment.Message);
@@ -391,8 +392,6 @@ public class CommentsControllerTests
         Assert.Equal(
             $"/api/comments/{commentId}/attachments/{attachmentId}",
             responseAttachment.DownloadUrl);
-        Assert.Null(typeof(CommentResponse).GetProperty("Email"));
-
         _senderMock.Verify(sender => sender.Send(
                 It.Is<GetCommentsQuery>(query =>
                     query.Page == request.Page &&

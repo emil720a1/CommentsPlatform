@@ -13,6 +13,7 @@ const commentsResponse: GetCommentsResponse = {
     {
       id: 'comment-id',
       userName: 'Alice1',
+      email: 'alice@example.com',
       homePage: 'https://example.com/',
       createdAt: '2026-09-27T10:00:00Z',
       message: 'Hello world',

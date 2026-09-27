@@ -1,0 +1,16 @@
+:host {
+  display: block;
+}
+
+.pagination {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+}
+
+.sorting {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  margin-block: 1rem;
+}

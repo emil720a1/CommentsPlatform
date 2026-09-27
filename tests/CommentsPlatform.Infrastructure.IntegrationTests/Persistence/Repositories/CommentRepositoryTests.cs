@@ -176,6 +176,50 @@ public sealed class CommentRepositoryTests : IAsyncLifetime
             descendingResult.Items.Select(item => item.Id).ToArray());
     }
 
+    [Theory]
+    [InlineData(SortDirection.Ascending, "Alice", "Charlie")]
+    [InlineData(SortDirection.Descending, "Charlie", "Alice")]
+    public async Task GetTopLevelCommentsAsync_WithRequestedDirection_SortsByUserName(
+        SortDirection direction,
+        string expectedFirst,
+        string expectedLast)
+    {
+        _dbContext.Comments.AddRange(
+            CreateTopLevelComment("Charlie", "Third"),
+            CreateTopLevelComment("Alice", "First"),
+            CreateTopLevelComment("Bob", "Second"));
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _commentRepository.GetTopLevelCommentsAsync(
+            new GetCommentsParameters(1, 10, CommentSortBy.UserName, direction),
+            CancellationToken.None);
+
+        Assert.Equal(expectedFirst, result.Items[0].UserName);
+        Assert.Equal(expectedLast, result.Items[^1].UserName);
+    }
+
+    [Theory]
+    [InlineData(SortDirection.Ascending, "a@example.com", "c@example.com")]
+    [InlineData(SortDirection.Descending, "c@example.com", "a@example.com")]
+    public async Task GetTopLevelCommentsAsync_WithRequestedDirection_SortsByEmail(
+        SortDirection direction,
+        string expectedFirst,
+        string expectedLast)
+    {
+        _dbContext.Comments.AddRange(
+            CreateTopLevelComment("User1", "Third", email: "c@example.com"),
+            CreateTopLevelComment("User2", "First", email: "a@example.com"),
+            CreateTopLevelComment("User3", "Second", email: "b@example.com"));
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _commentRepository.GetTopLevelCommentsAsync(
+            new GetCommentsParameters(1, 10, CommentSortBy.Email, direction),
+            CancellationToken.None);
+
+        Assert.Equal(expectedFirst, result.Items[0].Email);
+        Assert.Equal(expectedLast, result.Items[^1].Email);
+    }
+
     [Fact]
     public async Task GetTopLevelCommentsAsync_WithUnsupportedSorting_ThrowsArgumentOutOfRangeException()
     {
@@ -229,11 +273,12 @@ public sealed class CommentRepositoryTests : IAsyncLifetime
     private static Comment CreateTopLevelComment(
         string userName,
         string message,
-        DateTimeOffset? createdAt = null)
+        DateTimeOffset? createdAt = null,
+        string? email = null)
     {
         return Comment.Create(
             userName,
-            $"{userName}@example.com",
+            email ?? $"{userName}@example.com",
             null,
             message,
             null,

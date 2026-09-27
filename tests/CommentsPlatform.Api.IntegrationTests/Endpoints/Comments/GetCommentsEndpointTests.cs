@@ -79,7 +79,7 @@ public sealed class GetCommentsEndpointTests
     }
 
     [Fact]
-    public async Task GetComments_WithDescendingSort_ReturnsNewestCommentsFirstAndOmitsEmail()
+    public async Task GetComments_WithDescendingSort_ReturnsNewestCommentsFirstAndIncludesEmail()
     {
         await ClearCommentsAsync();
 
@@ -124,11 +124,6 @@ public sealed class GetCommentsEndpointTests
 
         var json = await response.Content.ReadAsStringAsync();
 
-        Assert.DoesNotContain(
-            "\"email\"",
-            json,
-            StringComparison.OrdinalIgnoreCase);
-
         var result = JsonSerializer.Deserialize<GetCommentsResponse>(
             json,
             new JsonSerializerOptions
@@ -149,15 +144,59 @@ public sealed class GetCommentsEndpointTests
 
         Assert.Equal(newestComment.Id, result.Items[0].Id);
         Assert.Equal(newestComment.UserName, result.Items[0].UserName);
+        Assert.Equal(newestComment.Email, result.Items[0].Email);
         Assert.Equal(newestComment.Message, result.Items[0].Message);
 
         Assert.Equal(middleComment.Id, result.Items[1].Id);
         Assert.Equal(middleComment.UserName, result.Items[1].UserName);
+        Assert.Equal(middleComment.Email, result.Items[1].Email);
         Assert.Equal(middleComment.Message, result.Items[1].Message);
 
         Assert.DoesNotContain(
             result.Items,
             comment => comment.Id == oldestComment.Id);
+    }
+
+    [Fact]
+    public async Task GetComments_WithUserNameAndEmailSorting_ReturnsRequestedOrder()
+    {
+        await ClearCommentsAsync();
+
+        var charlie = CreateComment(
+            userName: "Charlie",
+            email: "a@example.com",
+            homePage: null,
+            message: "Third by name",
+            parentCommentId: null);
+        var alice = CreateComment(
+            userName: "Alice",
+            email: "c@example.com",
+            homePage: null,
+            message: "First by name",
+            parentCommentId: null);
+        var bob = CreateComment(
+            userName: "Bob",
+            email: "b@example.com",
+            homePage: null,
+            message: "Second by name",
+            parentCommentId: null);
+
+        await SeedCommentsAsync(charlie, alice, bob);
+
+        var userNameResponse = await _client.GetFromJsonAsync<GetCommentsResponse>(
+            "/api/comments?page=1&pageSize=25&sortBy=UserName&sortDirection=Ascending");
+        var emailResponse = await _client.GetFromJsonAsync<GetCommentsResponse>(
+            "/api/comments?page=1&pageSize=25&sortBy=Email&sortDirection=Descending");
+
+        Assert.NotNull(userNameResponse);
+        Assert.Equal(
+            new[] { alice.Id, bob.Id, charlie.Id },
+            userNameResponse.Items.Select(comment => comment.Id));
+
+        Assert.NotNull(emailResponse);
+        Assert.Equal(
+            new[] { alice.Id, bob.Id, charlie.Id },
+            emailResponse.Items.Select(comment => comment.Id));
     }
 
     [Fact]

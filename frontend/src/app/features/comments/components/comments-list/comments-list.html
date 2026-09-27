@@ -1,0 +1,31 @@
+<section aria-label="Список коментарів">
+  @for (comment of comments(); track comment.id) {
+    <article>
+      <header>
+        @if (comment.homePage) {
+          <a [href]="comment.homePage" target="_blank" rel="noopener noreferrer">
+            <strong>{{ comment.userName }}</strong>
+          </a>
+        } @else {
+          <strong>{{ comment.userName }}</strong>
+        }
+
+        @if (comment.email) {
+          <a [href]="'mailto:' + comment.email">{{ comment.email }}</a>
+        }
+
+        <time [attr.datetime]="comment.createdAt">
+          {{ comment.createdAt | date: 'medium' }}
+        </time>
+      </header>
+
+      <div class="comment-message" [innerHTML]="comment.message"></div>
+
+      @for (attachment of comment.attachments; track attachment.id) {
+        <app-comment-attachment [attachment]="attachment" />
+      }
+
+      <button type="button" (click)="requestReply(comment)">Відповісти</button>
+    </article>
+  }
+</section>

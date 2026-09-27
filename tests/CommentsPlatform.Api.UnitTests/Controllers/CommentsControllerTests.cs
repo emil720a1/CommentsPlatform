@@ -380,6 +380,7 @@ public class CommentsControllerTests
         Assert.True(response.HasNextPage);
         Assert.Equal(commentId, responseComment.Id);
         Assert.Equal(comment.UserName, responseComment.UserName);
+        Assert.Equal(comment.Email, responseComment.Email);
         Assert.Equal(comment.HomePage, responseComment.HomePage);
         Assert.Equal(createdAt, responseComment.CreatedAt);
         Assert.Equal(comment.Message, responseComment.Message);
@@ -391,8 +392,6 @@ public class CommentsControllerTests
         Assert.Equal(
             $"/api/comments/{commentId}/attachments/{attachmentId}",
             responseAttachment.DownloadUrl);
-        Assert.Null(typeof(CommentResponse).GetProperty("Email"));
-
         _senderMock.Verify(sender => sender.Send(
                 It.Is<GetCommentsQuery>(query =>
                     query.Page == request.Page &&
@@ -400,6 +399,48 @@ public class CommentsControllerTests
                     query.SortBy == CommentSortBy.CreatedAt &&
                     query.SortDirection == SortDirection.Ascending),
                 cancellationToken),
+            Times.Once);
+    }
+
+    [Theory]
+    [InlineData(CommentSortField.UserName, CommentSortOrder.Ascending, CommentSortBy.UserName, SortDirection.Ascending)]
+    [InlineData(CommentSortField.UserName, CommentSortOrder.Descending, CommentSortBy.UserName, SortDirection.Descending)]
+    [InlineData(CommentSortField.Email, CommentSortOrder.Ascending, CommentSortBy.Email, SortDirection.Ascending)]
+    [InlineData(CommentSortField.Email, CommentSortOrder.Descending, CommentSortBy.Email, SortDirection.Descending)]
+    [InlineData(CommentSortField.CreatedAt, CommentSortOrder.Ascending, CommentSortBy.CreatedAt, SortDirection.Ascending)]
+    [InlineData(CommentSortField.CreatedAt, CommentSortOrder.Descending, CommentSortBy.CreatedAt, SortDirection.Descending)]
+    public async Task GetComments_WithSupportedSorting_DispatchesMappedQuery(
+        CommentSortField requestSortBy,
+        CommentSortOrder requestSortDirection,
+        CommentSortBy expectedSortBy,
+        SortDirection expectedSortDirection)
+    {
+        var request = new GetCommentsRequest(
+            Page: 2,
+            PageSize: 25,
+            SortBy: requestSortBy,
+            SortDirection: requestSortDirection);
+        ErrorOr<PaginatedList<CommentDto>> result = new PaginatedList<CommentDto>(
+            Array.Empty<CommentDto>(),
+            page: 2,
+            pageSize: 25,
+            totalCount: 0);
+
+        _senderMock
+            .Setup(sender => sender.Send(
+                It.IsAny<GetCommentsQuery>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(result);
+
+        await _controller.GetComments(request, CancellationToken.None);
+
+        _senderMock.Verify(sender => sender.Send(
+                It.Is<GetCommentsQuery>(query =>
+                    query.Page == 2 &&
+                    query.PageSize == 25 &&
+                    query.SortBy == expectedSortBy &&
+                    query.SortDirection == expectedSortDirection),
+                CancellationToken.None),
             Times.Once);
     }
 

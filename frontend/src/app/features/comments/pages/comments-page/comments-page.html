@@ -7,54 +7,62 @@
     <p role="alert">{{ warning }}</p>
   }
 
+  <section class="sorting" aria-label="Сортування коментарів">
+    <label for="comment-sort-field">Сортувати за</label>
+    <select
+      id="comment-sort-field"
+      [value]="parameters().sortBy"
+      (change)="changeSortField($event)"
+    >
+      <option value="CreatedAt">Датою створення</option>
+      <option value="UserName">Ім’ям користувача</option>
+      <option value="Email">Email</option>
+    </select>
+
+    <label for="comment-sort-direction">Напрямок</label>
+    <select
+      id="comment-sort-direction"
+      [value]="parameters().sortDirection"
+      (change)="changeSortDirection($event)"
+    >
+      <option value="Descending">За спаданням</option>
+      <option value="Ascending">За зростанням</option>
+    </select>
+  </section>
+
   @if (isLoading()) {
-    <p>Завантаження коментарів...</p>
+    <p aria-live="polite">Завантаження коментарів...</p>
   } @else if (errorMessage(); as error) {
     <p role="alert">{{ error }}</p>
-
     <button type="button" (click)="loadComments()">Спробувати ще раз</button>
   } @else if (commentsPage(); as page) {
     @if (page.items.length === 0) {
       <p>Коментарів поки немає.</p>
     } @else {
-      <section aria-label="Список коментарів">
-        @for (comment of page.items; track comment.id) {
-          <article>
-            <header>
-              <strong>{{ comment.userName }}</strong>
+      <app-comments-list [comments]="page.items" (replyRequested)="startReply($event)" />
 
-              <time [attr.datetime]="comment.createdAt">
-                {{ comment.createdAt | date: 'medium' }}
-              </time>
-            </header>
+      @if (replyingTo(); as reply) {
+        <app-comment-form
+          [parentCommentId]="reply.id"
+          [replyToUserName]="reply.userName"
+          (commentCreated)="onCommentCreated($event)"
+          (replyCancelled)="cancelReply()"
+        />
+      }
 
-            <p>{{ comment.message }}</p>
-
-            @for (attachment of comment.attachments; track attachment.id) {
-              <app-comment-attachment [attachment]="attachment" />
-            }
-
-            <button type="button" (click)="startReply(comment.id, comment.userName)">
-              Відповісти
-            </button>
-
-            @if (replyingTo(); as reply) {
-              @if (reply.id === comment.id) {
-                <app-comment-form
-                  [parentCommentId]="comment.id"
-                  [replyToUserName]="comment.userName"
-                  (commentCreated)="onCommentCreated($event)"
-                  (replyCancelled)="cancelReply()"
-                />
-              }
-            }
-          </article>
-        }
-      </section>
-
-      <p>
+      <p aria-live="polite">
         Сторінка {{ page.page }} із {{ page.totalPages }}. Усього коментарів: {{ page.totalCount }}.
       </p>
+
+      <nav class="pagination" aria-label="Пагінація коментарів">
+        <button type="button" [disabled]="!page.hasPreviousPage" (click)="goToPreviousPage()">
+          Попередня
+        </button>
+        <span aria-current="page">Сторінка {{ page.page }} із {{ page.totalPages }}</span>
+        <button type="button" [disabled]="!page.hasNextPage" (click)="goToNextPage()">
+          Наступна
+        </button>
+      </nav>
     }
   }
 </main>

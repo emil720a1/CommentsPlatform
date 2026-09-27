@@ -8,7 +8,9 @@ public sealed record GetCommentsRequest(
 
 public enum CommentSortField
 {
-    CreatedAt
+    CreatedAt = 0,
+    UserName = 1,
+    Email = 2
 }
 
 public enum CommentSortOrder

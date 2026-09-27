@@ -53,8 +53,8 @@ jobs:
           /k:"emil720a1_CommentsPlatform"
           /o:"emil720a1"
           /d:sonar.token="${SONAR_TOKEN}"
-          /d:sonar.cs.opencover.reportsPaths="TestResults/Unit/**/coverage.opencover.xml"
-          /d:sonar.cs.vstest.reportsPaths="TestResults/Unit/*.trx"
+          /d:sonar.cs.opencover.reportsPaths="TestResults/**/coverage.opencover.xml"
+          /d:sonar.cs.vstest.reportsPaths="TestResults/**/*.trx"
           /d:sonar.exclusions="**/bin/**,**/obj/**,**/Migrations/**,**/*.g.cs,**/*.Designer.cs,TestResults/**"
           /d:sonar.coverage.exclusions="frontend/**"
           /d:sonar.qualitygate.wait=true
@@ -109,6 +109,17 @@ jobs:
           --settings coverage.runsettings
           --logger "trx;LogFileName=infrastructure-unit-tests.trx"
           --results-directory TestResults/Unit
+
+      - name: Run Infrastructure integration tests with coverage
+        run: >
+          dotnet test
+          tests/CommentsPlatform.Infrastructure.IntegrationTests/CommentsPlatform.Infrastructure.IntegrationTests.csproj
+          --configuration Release
+          --no-build
+          --collect "XPlat Code Coverage"
+          --settings coverage.runsettings
+          --logger "trx;LogFileName=infrastructure-integration-tests.trx"
+          --results-directory TestResults/Integration
 
       - name: End SonarCloud analysis
         env:

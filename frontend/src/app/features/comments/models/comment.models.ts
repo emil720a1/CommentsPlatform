@@ -1,4 +1,4 @@
-export type CommentSortField = 'CreatedAt';
+export type CommentSortField = 'UserName' | 'Email' | 'CreatedAt';
 
 export type CommentSortDirection = 'Ascending' | 'Descending';
 
@@ -12,6 +12,7 @@ export interface GetCommentsParams {
 export interface CommentResponse {
   id: string;
   userName: string;
+  email: string;
   homePage: string | null;
   createdAt: string;
   message: string;

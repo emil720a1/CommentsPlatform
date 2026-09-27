@@ -5,4 +5,15 @@ public sealed record CommentResponse(
     string UserName,
     string? HomePage,
     DateTimeOffset CreatedAt,
-    string Message);
+    string Message,
+    IReadOnlyList<AttachmentResponse> Attachments);
+
+public sealed record AttachmentResponse(
+    Guid Id,
+    string OriginalFileName,
+    string ContentType,
+    long FileSizeBytes,
+    int? Width,
+    int? Height,
+    DateTimeOffset CreatedAt,
+    string DownloadUrl);

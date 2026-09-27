@@ -44,6 +44,19 @@ public sealed class CommentRepository : ICommentRepository
                 cancellationToken);
     }
 
+    public Task<Attachment?> GetAttachmentAsync(
+        Guid commentId,
+        Guid attachmentId,
+        CancellationToken cancellationToken)
+    {
+        return _dbContext.Attachments
+            .AsNoTracking()
+            .SingleOrDefaultAsync(
+                attachment => attachment.Id == attachmentId &&
+                              attachment.CommentId == commentId,
+                cancellationToken);
+    }
+
     public async Task SaveChangesAsync(CancellationToken cancellationToken)
     {
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -92,7 +105,19 @@ public sealed class CommentRepository : ICommentRepository
                 comment.HomePage,
                 comment.CreatedAt,
                 comment.Email,
-                comment.Message))
+                comment.Message,
+                comment.Attachments
+                    .OrderBy(attachment => attachment.CreatedAt)
+                    .ThenBy(attachment => attachment.Id)
+                    .Select(attachment => new AttachmentDto(
+                        attachment.Id,
+                        attachment.OriginalFileName,
+                        attachment.ContentType,
+                        attachment.FileSizeBytes,
+                        attachment.Width,
+                        attachment.Height,
+                        attachment.CreatedAt))
+                    .ToList()))
             .ToListAsync(cancellationToken);
 
         return new PaginatedList<CommentDto>(

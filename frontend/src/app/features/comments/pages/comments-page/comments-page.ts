@@ -4,12 +4,13 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { finalize } from 'rxjs';
 
 import { CommentCreatedEvent, CommentForm } from '../../components/comment-form/comment-form';
+import { CommentAttachment } from '../../components/comment-attachment/comment-attachment';
 import { ApiProblemDetails, GetCommentsResponse } from '../../models/comment.models';
 import { CommentsApiService } from '../../services/comments-api.service';
 
 @Component({
   selector: 'app-comments-page',
-  imports: [DatePipe, CommentForm],
+  imports: [DatePipe, CommentForm, CommentAttachment],
   templateUrl: './comments-page.html',
   styleUrl: './comments-page.scss',
 })

@@ -1,4 +1,4 @@
-<section>
+<section class="comment-form">
   @if (replyToUserName(); as userName) {
     <h3>Відповідь для {{ userName }}</h3>
   } @else {
@@ -6,11 +6,11 @@
   }
 
   @if (successMessage(); as message) {
-    <p role="status">{{ message }}</p>
+    <p class="form-notice form-notice--success" role="status">{{ message }}</p>
   }
 
   @if (apiErrorMessage(); as error) {
-    <p role="alert">{{ error }}</p>
+    <p class="form-notice form-notice--error" role="alert">{{ error }}</p>
   }
 
   <form [formGroup]="commentForm" (ngSubmit)="onSubmit()" novalidate>
@@ -82,8 +82,17 @@
         <button type="button" title="Курсив" aria-label="Курсив" (click)="applyInlineFormat('i')">
           <i>К</i>
         </button>
-        <button type="button" title="Посилання" (click)="applyLinkFormat()">Посилання</button>
-        <button type="button" title="Код" (click)="applyInlineFormat('code')">Код</button>
+        <button type="button" title="Код" aria-label="Код" (click)="applyInlineFormat('code')">
+          &lt;/&gt;
+        </button>
+        <button
+          type="button"
+          title="Посилання"
+          aria-label="Додати посилання"
+          (click)="applyLinkFormat()"
+        >
+          Лінк
+        </button>
       </div>
 
       <textarea
@@ -111,31 +120,55 @@
       }
     </div>
 
-    <div>
-      <label [for]="fieldIdPrefix + '-attachment'">Attachment</label>
+    <div class="attachment-field">
+      <span class="field-label" [id]="fieldIdPrefix + '-attachmentLabel'">Вкладення</span>
+
       <input
         #attachmentInput
+        class="upload-input"
         [id]="fieldIdPrefix + '-attachment'"
         type="file"
         accept="image/jpeg,image/png,image/gif,text/plain"
+        [attr.aria-labelledby]="fieldIdPrefix + '-attachmentLabel'"
         [attr.aria-describedby]="fieldIdPrefix + '-attachmentHint'"
         (change)="onFileSelected($event)"
       />
 
-      <small [id]="fieldIdPrefix + '-attachmentHint'">
-        Необов’язковий файл: JPEG, PNG, GIF або TXT, максимум 5 MiB.
-      </small>
+      <label
+        class="upload-target"
+        [class.upload-target--invalid]="attachmentError() !== null"
+        [for]="fieldIdPrefix + '-attachment'"
+      >
+        <span class="upload-title">Обрати файл</span>
+        <small [id]="fieldIdPrefix + '-attachmentHint'">
+          JPEG, PNG, GIF або TXT, максимум 5 MiB
+        </small>
+      </label>
 
       @if (attachmentError(); as error) {
         <small role="alert">{{ error }}</small>
       }
 
       @if (selectedFile(); as file) {
-        <p>Вибрано файл: {{ file.name }}</p>
+        <div class="selected-file" role="status">
+          <span class="selected-file__details">
+            <strong>{{ file.name }}</strong>
+            <small>{{ formatFileSize(file.size) }}</small>
+          </span>
+          <button
+            class="remove-file-button"
+            type="button"
+            [attr.aria-label]="'Видалити файл ' + file.name"
+            (click)="removeSelectedFile()"
+          >
+            Видалити
+          </button>
+        </div>
       }
     </div>
 
-    <div>
+    <div class="captcha-field">
+      <span class="field-label">Перевірка безпеки</span>
       <app-turnstile-widget (tokenChange)="onCaptchaTokenChange($event)" />
 
       @if (
@@ -146,14 +179,21 @@
       }
     </div>
 
-    <button type="submit" [disabled]="isSubmitting()">
-      {{ isSubmitting() ? 'Надсилання...' : 'Надіслати' }}
-    </button>
-
-    @if (parentCommentId() !== null) {
-      <button type="button" [disabled]="isSubmitting()" (click)="cancelReply()">
-        Скасувати відповідь
+    <div class="form-actions">
+      <button class="submit-button" type="submit" [disabled]="isSubmitting()">
+        {{ isSubmitting() ? 'Надсилання...' : 'Надіслати' }}
       </button>
-    }
+
+      @if (parentCommentId() !== null) {
+        <button
+          class="secondary-button"
+          type="button"
+          [disabled]="isSubmitting()"
+          (click)="cancelReply()"
+        >
+          Скасувати відповідь
+        </button>
+      }
+    </div>
   </form>
 </section>

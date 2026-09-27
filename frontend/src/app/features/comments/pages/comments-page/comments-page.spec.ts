@@ -315,13 +315,14 @@ describe('CommentsPage', () => {
 
   it('opens and cancels the reply form for a comment', () => {
     const replyButton = fixture.nativeElement.querySelector(
-      'article > button',
+      '.comment-actions .reply-button',
     ) as HTMLButtonElement;
 
     replyButton.click();
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Відповідь для Alice1');
+    expect(fixture.nativeElement.querySelectorAll('.reply-composer')).toHaveLength(1);
 
     const cancelButton = Array.from(
       fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,

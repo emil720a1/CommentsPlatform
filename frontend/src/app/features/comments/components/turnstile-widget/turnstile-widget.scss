@@ -1,0 +1,11 @@
+:host {
+  display: block;
+  max-inline-size: 100%;
+  overflow-x: auto;
+}
+
+small[role='alert'] {
+  color: var(--color-danger);
+  display: block;
+  margin-block-start: var(--space-2);
+}

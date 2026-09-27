@@ -3,6 +3,7 @@ import { Component, forwardRef, input, output } from '@angular/core';
 
 import { CommentResponse } from '../../models/comment.models';
 import { CommentAttachment } from '../comment-attachment/comment-attachment';
+import { CommentAvatar } from '../comment-avatar/comment-avatar';
 
 export interface CommentReplyRequestedEvent {
   id: string;
@@ -11,7 +12,7 @@ export interface CommentReplyRequestedEvent {
 
 @Component({
   selector: 'app-comment-item',
-  imports: [DatePipe, CommentAttachment, forwardRef(() => CommentItem)],
+  imports: [DatePipe, CommentAttachment, CommentAvatar, forwardRef(() => CommentItem)],
   templateUrl: './comment-item.html',
   styleUrl: './comment-item.scss',
 })

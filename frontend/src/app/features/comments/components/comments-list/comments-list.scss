@@ -1,3 +1,14 @@
 :host {
   display: block;
 }
+
+.comments-list {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  display: grid;
+}
+
+.comments-list > app-comment-item:last-child {
+  --comment-border: 0;
+}

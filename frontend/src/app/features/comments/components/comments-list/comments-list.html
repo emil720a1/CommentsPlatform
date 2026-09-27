@@ -1,4 +1,4 @@
-<section aria-label="Список коментарів">
+<section class="comments-list" aria-label="Список коментарів">
   @for (comment of comments(); track comment.id) {
     <app-comment-item [comment]="comment" (replyRequested)="replyRequested.emit($event)" />
   }

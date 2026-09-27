@@ -108,6 +108,30 @@ describe('CommentForm', () => {
     expect(commentsApi.uploadAttachment).toHaveBeenCalledWith('comment-id', file);
   });
 
+  it('shows selected attachment details and allows removing it', () => {
+    const file = new File(['hello'], 'note.txt', { type: 'text/plain' });
+    const fileInput = getInput('input[type="file"]');
+
+    Object.defineProperty(fileInput, 'files', {
+      configurable: true,
+      value: [file],
+    });
+    fileInput.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('note.txt');
+    expect(fixture.nativeElement.textContent).toContain('5 Б');
+
+    const removeButton = fixture.nativeElement.querySelector(
+      'button[aria-label="Видалити файл note.txt"]',
+    ) as HTMLButtonElement;
+    removeButton.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).not.toContain('note.txt');
+    expect(fileInput.value).toBe('');
+  });
+
   it('disables submit while the request is in progress', () => {
     const createResult = new Subject<{ id: string }>();
     commentsApi.createComment.mockReturnValue(createResult);
@@ -221,8 +245,8 @@ describe('CommentForm', () => {
     expect(buttons.map((button) => button.title)).toEqual([
       'Жирний текст',
       'Курсив',
-      'Посилання',
       'Код',
+      'Посилання',
     ]);
   });
 

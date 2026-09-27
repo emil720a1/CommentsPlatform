@@ -1,0 +1,30 @@
+<div class="backdrop" (click)="closeFromBackdrop($event)">
+  <section
+    #dialog
+    class="lightbox"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-label]="'Перегляд зображення ' + alternativeText()"
+    tabindex="-1"
+  >
+    <button type="button" class="close-button" aria-label="Закрити перегляд" (click)="close()">
+      ×
+    </button>
+
+    @if (isLoading() && !loadFailed()) {
+      <p class="status" aria-live="polite">Завантаження зображення...</p>
+    }
+
+    @if (loadFailed()) {
+      <p class="status" role="alert">Не вдалося завантажити зображення.</p>
+    } @else {
+      <img
+        [class.loading]="isLoading()"
+        [src]="imageUrl()"
+        [alt]="alternativeText()"
+        (load)="onImageLoaded()"
+        (error)="onImageError()"
+      />
+    }
+  </section>
+</div>

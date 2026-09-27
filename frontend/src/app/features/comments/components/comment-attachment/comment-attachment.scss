@@ -12,6 +12,13 @@ img {
   object-fit: contain;
 }
 
+.preview-button {
+  background: transparent;
+  border: 0;
+  cursor: zoom-in;
+  padding: 0;
+}
+
 span {
   color: #555;
   font-size: 0.875rem;

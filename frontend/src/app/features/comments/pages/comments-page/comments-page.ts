@@ -3,12 +3,13 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { finalize } from 'rxjs';
 
+import { CommentCreatedEvent, CommentForm } from '../../components/comment-form/comment-form';
 import { ApiProblemDetails, GetCommentsResponse } from '../../models/comment.models';
 import { CommentsApiService } from '../../services/comments-api.service';
 
 @Component({
   selector: 'app-comments-page',
-  imports: [DatePipe],
+  imports: [DatePipe, CommentForm],
   templateUrl: './comments-page.html',
   styleUrl: './comments-page.scss',
 })
@@ -20,6 +21,10 @@ export class CommentsPage implements OnInit {
   protected readonly isLoading = signal(false);
 
   protected readonly errorMessage = signal<string | null>(null);
+
+  protected readonly replyingTo = signal<{ id: string; userName: string } | null>(null);
+
+  protected readonly submissionWarning = signal<string | null>(null);
 
   ngOnInit(): void {
     this.loadComments();
@@ -41,6 +46,21 @@ export class CommentsPage implements OnInit {
           this.errorMessage.set(this.getErrorMessage(error));
         },
       });
+  }
+
+  protected startReply(id: string, userName: string): void {
+    this.submissionWarning.set(null);
+    this.replyingTo.set({ id, userName });
+  }
+
+  protected cancelReply(): void {
+    this.replyingTo.set(null);
+  }
+
+  protected onCommentCreated(event: CommentCreatedEvent): void {
+    this.submissionWarning.set(event.attachmentErrorMessage);
+    this.replyingTo.set(null);
+    this.loadComments();
   }
 
   private getErrorMessage(error: HttpErrorResponse): string {

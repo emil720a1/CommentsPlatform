@@ -7,7 +7,10 @@ public record CommentDto(
     DateTimeOffset CreatedAt,
     string Email,
     string Message,
-    IReadOnlyList<AttachmentDto> Attachments);
+    IReadOnlyList<AttachmentDto> Attachments)
+{
+    public IReadOnlyList<CommentDto> Replies { get; init; } = [];
+}
 
 public sealed record AttachmentDto(
     Guid Id,

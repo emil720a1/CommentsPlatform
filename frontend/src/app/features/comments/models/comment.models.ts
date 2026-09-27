@@ -17,6 +17,7 @@ export interface CommentResponse {
   createdAt: string;
   message: string;
   attachments: AttachmentResponse[];
+  replies: CommentResponse[];
 }
 
 export interface AttachmentResponse {

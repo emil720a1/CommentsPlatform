@@ -1,0 +1,33 @@
+<article>
+  <header>
+    @if (comment().homePage) {
+      <a [href]="comment().homePage" target="_blank" rel="noopener noreferrer">
+        <strong>{{ comment().userName }}</strong>
+      </a>
+    } @else {
+      <strong>{{ comment().userName }}</strong>
+    }
+
+    <a [href]="'mailto:' + comment().email">{{ comment().email }}</a>
+
+    <time [attr.datetime]="comment().createdAt">
+      {{ comment().createdAt | date: 'medium' }}
+    </time>
+  </header>
+
+  <div class="comment-message" [innerHTML]="comment().message"></div>
+
+  @for (attachment of comment().attachments; track attachment.id) {
+    <app-comment-attachment [attachment]="attachment" />
+  }
+
+  <button type="button" (click)="requestReply()">Відповісти</button>
+
+  @if (comment().replies.length > 0) {
+    <section class="replies" aria-label="Відповіді">
+      @for (reply of comment().replies; track reply.id) {
+        <app-comment-item [comment]="reply" (replyRequested)="replyRequested.emit($event)" />
+      }
+    </section>
+  }
+</article>

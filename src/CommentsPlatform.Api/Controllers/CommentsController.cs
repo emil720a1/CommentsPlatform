@@ -148,24 +148,7 @@ public class CommentsController : ControllerBase
         var page = result.Value;
 
         var comments = page.Items
-            .Select(comment => new CommentResponse(
-                comment.Id,
-                comment.UserName,
-                comment.Email,
-                comment.HomePage,
-                comment.CreatedAt,
-                comment.Message,
-                comment.Attachments
-                    .Select(attachment => new AttachmentResponse(
-                        attachment.Id,
-                        attachment.OriginalFileName,
-                        attachment.ContentType,
-                        attachment.FileSizeBytes,
-                        attachment.Width,
-                        attachment.Height,
-                        attachment.CreatedAt,
-                        $"/api/comments/{comment.Id}/attachments/{attachment.Id}"))
-                    .ToList()))
+            .Select(MapCommentResponse)
             .ToList();
 
         return Ok(new GetCommentsResponse(
@@ -176,6 +159,31 @@ public class CommentsController : ControllerBase
             page.TotalPages,
             page.HasPreviousPage,
             page.HasNextPage));
+    }
+
+    private static CommentResponse MapCommentResponse(CommentDto comment)
+    {
+        return new CommentResponse(
+            comment.Id,
+            comment.UserName,
+            comment.Email,
+            comment.HomePage,
+            comment.CreatedAt,
+            comment.Message,
+            comment.Attachments
+                .Select(attachment => new AttachmentResponse(
+                    attachment.Id,
+                    attachment.OriginalFileName,
+                    attachment.ContentType,
+                    attachment.FileSizeBytes,
+                    attachment.Width,
+                    attachment.Height,
+                    attachment.CreatedAt,
+                    $"/api/comments/{comment.Id}/attachments/{attachment.Id}"))
+                .ToList())
+        {
+            Replies = comment.Replies.Select(MapCommentResponse).ToList()
+        };
     }
 
     [HttpGet("{commentId:guid}/attachments/{attachmentId:guid}")]

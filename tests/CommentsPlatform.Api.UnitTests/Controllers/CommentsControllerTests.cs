@@ -330,6 +330,7 @@ public class CommentsControllerTests
         var commentId = Guid.NewGuid();
         var createdAt = DateTimeOffset.UtcNow;
         var attachmentId = Guid.NewGuid();
+        var replyId = Guid.NewGuid();
         var comment = new CommentDto(
             commentId,
             "user1",
@@ -347,7 +348,20 @@ public class CommentsControllerTests
                     640,
                     480,
                     createdAt)
-            });
+            })
+        {
+            Replies =
+            [
+                new CommentDto(
+                    replyId,
+                    "reply1",
+                    null,
+                    createdAt.AddMinutes(1),
+                    "reply@example.com",
+                    "Reply message",
+                    Array.Empty<AttachmentDto>())
+            ]
+        };
         var page = new PaginatedList<CommentDto>(
             new[] { comment },
             page: 2,
@@ -392,6 +406,10 @@ public class CommentsControllerTests
         Assert.Equal(
             $"/api/comments/{commentId}/attachments/{attachmentId}",
             responseAttachment.DownloadUrl);
+        var responseReply = Assert.Single(responseComment.Replies);
+        Assert.Equal(replyId, responseReply.Id);
+        Assert.Equal("reply1", responseReply.UserName);
+        Assert.Empty(responseReply.Replies);
         _senderMock.Verify(sender => sender.Send(
                 It.Is<GetCommentsQuery>(query =>
                     query.Page == request.Page &&

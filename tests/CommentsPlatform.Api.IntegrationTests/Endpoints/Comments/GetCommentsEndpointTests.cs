@@ -200,7 +200,7 @@ public sealed class GetCommentsEndpointTests
     }
 
     [Fact]
-    public async Task GetComments_WithReplies_ReturnsOnlyTopLevelComments()
+    public async Task GetComments_WithReplies_ReturnsNestedReplyTree()
     {
         await ClearCommentsAsync();
 
@@ -222,11 +222,18 @@ public sealed class GetCommentsEndpointTests
             homePage: null,
             message: "Reply",
             parentCommentId: parentComment.Id);
+        var nestedReply = CreateComment(
+            userName: "Nested1",
+            email: "nested@example.com",
+            homePage: null,
+            message: "Nested reply",
+            parentCommentId: reply.Id);
 
         await SeedCommentsAsync(
             parentComment,
             secondTopLevelComment,
-            reply);
+            reply,
+            nestedReply);
 
         var response = await _client.GetAsync(
             "/api/comments?page=1&pageSize=10");
@@ -248,6 +255,12 @@ public sealed class GetCommentsEndpointTests
         Assert.DoesNotContain(
             result.Items,
             comment => comment.Id == reply.Id);
+        var returnedParent = Assert.Single(
+            result.Items,
+            comment => comment.Id == parentComment.Id);
+        var returnedReply = Assert.Single(returnedParent.Replies);
+        Assert.Equal(reply.Id, returnedReply.Id);
+        Assert.Equal(nestedReply.Id, Assert.Single(returnedReply.Replies).Id);
     }
 
     [Fact]

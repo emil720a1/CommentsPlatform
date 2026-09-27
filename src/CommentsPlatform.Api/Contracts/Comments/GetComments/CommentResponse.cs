@@ -7,7 +7,10 @@ public sealed record CommentResponse(
     string? HomePage,
     DateTimeOffset CreatedAt,
     string Message,
-    IReadOnlyList<AttachmentResponse> Attachments);
+    IReadOnlyList<AttachmentResponse> Attachments)
+{
+    public IReadOnlyList<CommentResponse> Replies { get; init; } = [];
+}
 
 public sealed record AttachmentResponse(
     Guid Id,

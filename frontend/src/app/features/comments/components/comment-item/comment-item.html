@@ -1,14 +1,22 @@
-<article>
-  <header>
+<article class="comment-card">
+  <app-comment-avatar [userName]="comment().userName" />
+
+  <header class="comment-meta">
     @if (comment().homePage) {
-      <a [href]="comment().homePage" target="_blank" rel="noopener noreferrer">
-        <strong>{{ comment().userName }}</strong>
+      <a
+        class="comment-author comment-author--link"
+        [href]="comment().homePage"
+        target="_blank"
+        rel="noopener noreferrer"
+        [attr.aria-label]="'Домашня сторінка користувача ' + comment().userName"
+      >
+        {{ comment().userName }}
       </a>
     } @else {
-      <strong>{{ comment().userName }}</strong>
+      <strong class="comment-author">{{ comment().userName }}</strong>
     }
 
-    <a [href]="'mailto:' + comment().email">{{ comment().email }}</a>
+    <a class="comment-email" [href]="'mailto:' + comment().email">{{ comment().email }}</a>
 
     <time [attr.datetime]="comment().createdAt">
       {{ comment().createdAt | date: 'medium' }}
@@ -17,11 +25,17 @@
 
   <div class="comment-message" [innerHTML]="comment().message"></div>
 
-  @for (attachment of comment().attachments; track attachment.id) {
-    <app-comment-attachment [attachment]="attachment" />
+  @if (comment().attachments.length > 0) {
+    <div class="comment-attachments">
+      @for (attachment of comment().attachments; track attachment.id) {
+        <app-comment-attachment [attachment]="attachment" />
+      }
+    </div>
   }
 
-  <button type="button" (click)="requestReply()">Відповісти</button>
+  <div class="comment-actions">
+    <button class="reply-button" type="button" (click)="requestReply()">Відповісти</button>
+  </div>
 
   @if (comment().replies.length > 0) {
     <section class="replies" aria-label="Відповіді">

@@ -183,6 +183,29 @@ export class CommentForm {
     this.selectedFile.set(file);
   }
 
+  protected removeSelectedFile(): void {
+    this.selectedFile.set(null);
+    this.attachmentError.set(null);
+
+    if (this.attachmentInput !== undefined) {
+      this.attachmentInput.nativeElement.value = '';
+    }
+  }
+
+  protected formatFileSize(bytes: number): string {
+    if (bytes < 1024) {
+      return `${bytes} Б`;
+    }
+
+    const kilobytes = bytes / 1024;
+
+    if (kilobytes < 1024) {
+      return `${kilobytes.toFixed(kilobytes < 10 ? 1 : 0)} КБ`;
+    }
+
+    return `${(kilobytes / 1024).toFixed(1)} МБ`;
+  }
+
   protected onSubmit(): void {
     if (this.isSubmitting()) {
       return;

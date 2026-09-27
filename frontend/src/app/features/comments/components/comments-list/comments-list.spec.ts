@@ -31,6 +31,26 @@ describe('CommentsList', () => {
     expect(homePage.rel).toContain('noopener');
     expect(email.textContent).toContain('alice@example.com');
     expect(fixture.nativeElement.textContent).toContain('notes.txt');
+    expect(
+      (
+        fixture.nativeElement.querySelector('app-comment-avatar .avatar') as HTMLElement
+      ).textContent?.trim(),
+    ).toBe('A');
+  });
+
+  it('renders visible author, email and date metadata without bullet elements', () => {
+    fixture.componentRef.setInput('comments', [createComment()]);
+    fixture.detectChanges();
+
+    const metadata = fixture.nativeElement.querySelector('.comment-meta') as HTMLElement;
+    const author = metadata.querySelector('.comment-author') as HTMLElement;
+    const email = metadata.querySelector('.comment-email') as HTMLAnchorElement;
+    const date = metadata.querySelector('time') as HTMLTimeElement;
+
+    expect(author.textContent?.trim()).toBe('Alice1');
+    expect(email.textContent?.trim()).toBe('alice@example.com');
+    expect(date.dateTime).toBe('2026-09-27T10:00:00Z');
+    expect(metadata.textContent).not.toContain('·');
   });
 
   it('sanitizes unsafe message markup', () => {
@@ -82,6 +102,13 @@ describe('CommentsList', () => {
     expect(fixture.nativeElement.querySelectorAll('.replies')).toHaveLength(2);
     expect(fixture.nativeElement.textContent).toContain('First reply');
     expect(fixture.nativeElement.textContent).toContain('Nested reply');
+    expect(
+      Array.from(
+        fixture.nativeElement.querySelectorAll(
+          'app-comment-avatar .avatar',
+        ) as NodeListOf<HTMLElement>,
+      ).map((avatar) => avatar.textContent?.trim()),
+    ).toEqual(['A', 'R', 'N']);
 
     const buttons = fixture.nativeElement.querySelectorAll(
       'button',

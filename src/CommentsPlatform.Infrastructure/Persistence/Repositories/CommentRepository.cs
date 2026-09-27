@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using CommentsPlatform.Application.Common.Abstractions.Persistence;
 using CommentsPlatform.Application.Common.Models;
 using CommentsPlatform.Application.Features.Comments.Queries.GetComments;
@@ -74,21 +75,20 @@ public sealed class CommentRepository : ICommentRepository
 
         var orderedQuery = parameters.SortBy switch
         {
-            CommentSortBy.CreatedAt => parameters.SortDirection switch
-            {
-                SortDirection.Ascending => query
-                    .OrderBy(comment => comment.CreatedAt)
-                    .ThenBy(comment => comment.Id),
+            CommentSortBy.UserName => ApplyOrdering(
+                query,
+                parameters.SortDirection,
+                comment => comment.UserName),
 
-                SortDirection.Descending => query
-                    .OrderByDescending(comment => comment.CreatedAt)
-                    .ThenByDescending(comment => comment.Id),
+            CommentSortBy.Email => ApplyOrdering(
+                query,
+                parameters.SortDirection,
+                comment => comment.Email),
 
-                _ => throw new ArgumentOutOfRangeException(
-                    nameof(parameters.SortDirection),
-                    parameters.SortDirection,
-                    "Unsupported sort direction.")
-            },
+            CommentSortBy.CreatedAt => ApplyOrdering(
+                query,
+                parameters.SortDirection,
+                comment => comment.CreatedAt),
 
             _ => throw new ArgumentOutOfRangeException(
                 nameof(parameters.SortBy),
@@ -125,5 +125,25 @@ public sealed class CommentRepository : ICommentRepository
             parameters.Page,
             parameters.PageSize,
             totalCount);
+    }
+
+    private static IOrderedQueryable<Comment> ApplyOrdering<TKey>(
+        IQueryable<Comment> query,
+        SortDirection sortDirection,
+        Expression<Func<Comment, TKey>> keySelector)
+    {
+        return sortDirection switch
+        {
+            SortDirection.Ascending => query
+                .OrderBy(keySelector)
+                .ThenBy(comment => comment.Id),
+            SortDirection.Descending => query
+                .OrderByDescending(keySelector)
+                .ThenByDescending(comment => comment.Id),
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(GetCommentsParameters.SortDirection),
+                sortDirection,
+                "Unsupported sort direction.")
+        };
     }
 }

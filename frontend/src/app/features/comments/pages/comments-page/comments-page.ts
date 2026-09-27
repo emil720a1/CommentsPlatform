@@ -11,6 +11,7 @@ import {
 import {
   ApiProblemDetails,
   CommentSortDirection,
+  CommentSortField,
   GetCommentsParams,
   GetCommentsResponse,
 } from '../../models/comment.models';
@@ -97,6 +98,16 @@ export class CommentsPage implements OnInit, OnDestroy {
     }
   }
 
+  protected changeSortField(event: Event): void {
+    const sortBy = (event.target as HTMLSelectElement).value as CommentSortField;
+    void this.navigateToSorting(sortBy, this.parameters().sortDirection);
+  }
+
+  protected changeSortDirection(event: Event): void {
+    const sortDirection = (event.target as HTMLSelectElement).value as CommentSortDirection;
+    void this.navigateToSorting(this.parameters().sortBy, sortDirection);
+  }
+
   protected startReply(reply: CommentReplyRequestedEvent): void {
     this.submissionWarning.set(null);
     this.replyingTo.set(reply);
@@ -132,15 +143,39 @@ export class CommentsPage implements OnInit, OnDestroy {
       CommentsPage.defaultPage,
       Number.MAX_SAFE_INTEGER,
     );
-    const sortDirection: CommentSortDirection =
-      queryParameters.get('sortDirection') === 'Ascending' ? 'Ascending' : 'Descending';
+    const sortBy = this.readSortField(queryParameters.get('sortBy'));
+    const sortDirection = this.readSortDirection(queryParameters.get('sortDirection'));
 
     return {
       page,
       pageSize: CommentsPage.defaultPageSize,
-      sortBy: 'CreatedAt',
+      sortBy,
       sortDirection,
     };
+  }
+
+  private navigateToSorting(
+    sortBy: CommentSortField,
+    sortDirection: CommentSortDirection,
+  ): Promise<boolean> {
+    return this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        page: CommentsPage.defaultPage,
+        pageSize: CommentsPage.defaultPageSize,
+        sortBy,
+        sortDirection,
+      },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  private readSortField(value: string | null): CommentSortField {
+    return value === 'UserName' || value === 'Email' || value === 'CreatedAt' ? value : 'CreatedAt';
+  }
+
+  private readSortDirection(value: string | null): CommentSortDirection {
+    return value === 'Ascending' || value === 'Descending' ? value : 'Descending';
   }
 
   private navigateToPage(page: number): Promise<boolean> {

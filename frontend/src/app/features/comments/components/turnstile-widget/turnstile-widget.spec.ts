@@ -36,19 +36,21 @@ describe('TurnstileWidget', () => {
     window.turnstile = undefined;
   });
 
-  it('renders the widget with the configured site key and action', () => {
+  it('renders the widget with the configured site key and action', async () => {
     fixture.detectChanges();
+    await fixture.whenStable();
 
     expect(turnstile.render).toHaveBeenCalledOnce();
     expect(renderOptions.sitekey).toBe(environment.turnstileSiteKey);
     expect(renderOptions.action).toBe(environment.turnstileAction);
   });
 
-  it('emits the token and can reset the widget', () => {
+  it('emits the token and can reset the widget', async () => {
     const tokenChange = vi.fn();
     component.tokenChange.subscribe(tokenChange);
 
     fixture.detectChanges();
+    await fixture.whenStable();
     renderOptions.callback('captcha-token');
     component.reset();
 

@@ -2,6 +2,7 @@ import {
   AfterViewInit,
   Component,
   ElementRef,
+  inject,
   OnDestroy,
   output,
   signal,
@@ -9,6 +10,8 @@ import {
 } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
+import { TurnstileLoaderService } from './turnstile-loader.service';
+import { TurnstileApi } from './turnstile.types';
 
 @Component({
   selector: 'app-turnstile-widget',
@@ -17,6 +20,8 @@ import { environment } from '../../../../../environments/environment';
   styleUrl: './turnstile-widget.scss',
 })
 export class TurnstileWidget implements AfterViewInit, OnDestroy {
+  private readonly turnstileLoader = inject(TurnstileLoaderService);
+
   @ViewChild('container', { static: true })
   private container!: ElementRef<HTMLDivElement>;
 
@@ -26,72 +31,54 @@ export class TurnstileWidget implements AfterViewInit, OnDestroy {
 
   private widgetId: string | null = null;
 
-  private scriptElement: HTMLScriptElement | null = null;
+  private turnstileApi: TurnstileApi | null = null;
 
   private isDestroyed = false;
 
-  private readonly handleScriptLoad = (): void => {
-    this.renderWidget();
-  };
-
-  private readonly handleScriptError = (): void => {
-    this.handleFailure('Не вдалося завантажити CAPTCHA. Оновіть сторінку та спробуйте ще раз.');
-  };
-
   ngAfterViewInit(): void {
-    if (window.turnstile !== undefined) {
-      this.renderWidget();
-      return;
-    }
-
-    const script = document.getElementById('turnstile-script');
-
-    if (!(script instanceof HTMLScriptElement)) {
-      this.handleFailure('Не вдалося ініціалізувати CAPTCHA.');
-      return;
-    }
-
-    this.scriptElement = script;
-
-    script.addEventListener('load', this.handleScriptLoad, { once: true });
-    script.addEventListener('error', this.handleScriptError, { once: true });
+    void this.turnstileLoader
+      .load()
+      .then((turnstileApi) => {
+        if (!this.isDestroyed) {
+          this.renderWidget(turnstileApi);
+        }
+      })
+      .catch(() => {
+        if (!this.isDestroyed) {
+          this.handleFailure(
+            'Не вдалося завантажити CAPTCHA. Оновіть сторінку та спробуйте ще раз.',
+          );
+        }
+      });
   }
 
   ngOnDestroy(): void {
     this.isDestroyed = true;
 
-    this.scriptElement?.removeEventListener('load', this.handleScriptLoad);
-    this.scriptElement?.removeEventListener('error', this.handleScriptError);
-
     if (this.widgetId !== null) {
-      window.turnstile?.remove(this.widgetId);
+      this.turnstileApi?.remove(this.widgetId);
     }
 
     this.widgetId = null;
+    this.turnstileApi = null;
   }
 
   reset(): void {
     if (this.widgetId !== null) {
-      window.turnstile?.reset(this.widgetId);
+      this.turnstileApi?.reset(this.widgetId);
     }
 
     this.errorMessage.set(null);
     this.tokenChange.emit(null);
   }
 
-  private renderWidget(): void {
+  private renderWidget(turnstileApi: TurnstileApi): void {
     if (this.isDestroyed || this.widgetId !== null) {
       return;
     }
 
-    const turnstile = window.turnstile;
-
-    if (turnstile === undefined) {
-      this.handleFailure('Не вдалося ініціалізувати CAPTCHA.');
-      return;
-    }
-
-    this.widgetId = turnstile.render(this.container.nativeElement, {
+    this.turnstileApi = turnstileApi;
+    this.widgetId = turnstileApi.render(this.container.nativeElement, {
       sitekey: environment.turnstileSiteKey,
       action: environment.turnstileAction,
       theme: 'auto',

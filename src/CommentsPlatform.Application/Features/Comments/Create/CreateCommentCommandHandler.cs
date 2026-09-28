@@ -1,7 +1,8 @@
 using CommentsPlatform.Application.Common.Abstractions.Persistence;
+using CommentsPlatform.Application.Common.Abstractions.Security;
+using CommentsPlatform.Application.Features.Comments.Events;
 using CommentsPlatform.Domain;
 using ErrorOr;
-using FluentValidation;
 using MediatR;
 
 namespace CommentsPlatform.Application.Features.Comments.Create;
@@ -10,33 +11,36 @@ public sealed class CreateCommentCommandHandler
     : IRequestHandler<CreateCommentCommand, ErrorOr<Guid>>
 {
     private readonly ICommentRepository _commentRepository;
-    private readonly IValidator<CreateCommentCommand> _validator;
+    private readonly ICaptchaValidator _captchaValidator;
+    private readonly TimeProvider _timeProvider;
+    private readonly IHtmlSanitizer _htmlSanitizer;
+    private readonly IPublisher _publisher;
 
     public CreateCommentCommandHandler(
         ICommentRepository commentRepository,
-        IValidator<CreateCommentCommand> validator)
+        ICaptchaValidator captchaValidator,
+        IHtmlSanitizer htmlSanitizer,
+        TimeProvider timeProvider,
+        IPublisher publisher)
     {
         _commentRepository = commentRepository;
-        _validator = validator;
+        _captchaValidator = captchaValidator;
+        _htmlSanitizer = htmlSanitizer;
+        _timeProvider = timeProvider;
+        _publisher = publisher;
     }
 
     public async Task<ErrorOr<Guid>> Handle(
         CreateCommentCommand request,
         CancellationToken cancellationToken)
     {
-        var validationResult = await _validator.ValidateAsync(
-            request,
+        var isCaptchaValid = await _captchaValidator.IsValidAsync(
+            request.CaptchaToken,
             cancellationToken);
 
-        if (!validationResult.IsValid)
+        if (!isCaptchaValid)
         {
-            var errors = validationResult.Errors
-                .Select(failure => Error.Validation(
-                    failure.ErrorCode,
-                    failure.ErrorMessage))
-                .ToList();
-
-            return errors;
+            return CreateCommentErrors.InvalidCaptcha;
         }
 
         if (request.ParentCommentId.HasValue)
@@ -51,6 +55,8 @@ public sealed class CreateCommentCommandHandler
             }
         }
 
+        var sanitizedMessage = _htmlSanitizer.Sanitize(request.Message);
+
         Comment comment;
         try
         {
@@ -58,8 +64,9 @@ public sealed class CreateCommentCommandHandler
                 request.UserName,
                 request.Email,
                 request.HomePage,
-                request.Message,
-                request.ParentCommentId);
+                sanitizedMessage,
+                request.ParentCommentId,
+                _timeProvider.GetUtcNow());
         }
         catch (ArgumentException exception)
         {
@@ -67,6 +74,10 @@ public sealed class CreateCommentCommandHandler
         }
 
         await _commentRepository.AddAsync(comment, cancellationToken);
+
+        await _publisher.Publish(
+            new CommentCreatedEvent(comment.Id),
+            cancellationToken);
 
         return comment.Id;
     }

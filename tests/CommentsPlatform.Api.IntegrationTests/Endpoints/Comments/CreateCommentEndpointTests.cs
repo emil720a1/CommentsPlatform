@@ -1,0 +1,240 @@
+using System.Net;
+using System.Net.Http.Json;
+using CommentsPlatform.Api.Contracts.Comments;
+using CommentsPlatform.Api.IntegrationTests.Infrastructure;
+using CommentsPlatform.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace CommentsPlatform.Api.IntegrationTests.Endpoints.Comments;
+
+[Collection(ApiIntegrationTestCollection.Name)]
+public sealed class CreateCommentEndpointTests
+{
+    private readonly CommentsPlatformWebApplicationFactory _factory;
+    private readonly HttpClient _client;
+
+    public CreateCommentEndpointTests(
+        CommentsPlatformWebApplicationFactory factory)
+    {
+        _factory = factory;
+        _client = factory.CreateClient();
+    }
+
+    [Fact]
+    public async Task CreateComment_WithValidCaptcha_CreatesComment()
+    {
+        await ClearCommentsAsync();
+
+        var request = new CreateCommentRequest(
+            "User1",
+            "user1@example.com",
+            null,
+            "Integration test comment",
+            null,
+            FakeCaptchaValidator.ValidToken);
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/comments",
+            request);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var result =
+            await response.Content.ReadFromJsonAsync<CreateCommentResponse>();
+
+        Assert.NotNull(result);
+        Assert.NotEqual(Guid.Empty, result.Id);
+
+        using var scope = _factory.Services.CreateScope();
+
+        var dbContext = scope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
+
+        var storedComment = await dbContext.Comments
+            .AsNoTracking()
+            .SingleAsync();
+
+        Assert.Equal(result.Id, storedComment.Id);
+        Assert.Equal(request.UserName, storedComment.UserName);
+        Assert.Equal(request.Email, storedComment.Email);
+        Assert.Equal(request.Message, storedComment.Message);
+    }
+
+    [Fact]
+    public async Task CreateComment_WithInvalidCaptcha_ReturnsBadRequestAndDoesNotPersistComment()
+    {
+        await ClearCommentsAsync();
+
+        var request = new CreateCommentRequest(
+            "User1",
+            "user1@example.com",
+            null,
+            "Integration test comment",
+            null,
+            "invalid-captcha-token");
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/comments",
+            request);
+
+        await ProblemDetailsAssertions.AssertAsync(
+            response,
+            HttpStatusCode.BadRequest,
+            "Validation error",
+            "One or more validation errors occurred.",
+            "Comments.Captcha.Invalid",
+            "CAPTCHA validation failed.");
+
+        using var scope = _factory.Services.CreateScope();
+
+        var dbContext = scope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
+
+        var commentsExist = await dbContext.Comments
+            .AsNoTracking()
+            .AnyAsync();
+
+        Assert.False(commentsExist);
+    }
+
+    [Fact]
+    public async Task CreateComment_WithMissingParent_ReturnsNotFoundAndDoesNotPersistComment()
+    {
+        await ClearCommentsAsync();
+
+        var request = new CreateCommentRequest(
+            "User1",
+            "user1@example.com",
+            null,
+            "Integration test reply",
+            Guid.NewGuid(),
+            FakeCaptchaValidator.ValidToken);
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/comments",
+            request);
+
+        await ProblemDetailsAssertions.AssertAsync(
+            response,
+            HttpStatusCode.NotFound,
+            "Resource not found",
+            "The parent comment was not found.",
+            "Comments.ParentNotFound",
+            "The parent comment was not found.");
+
+        using var scope = _factory.Services.CreateScope();
+
+        var dbContext = scope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
+
+        var commentsExist = await dbContext.Comments
+            .AsNoTracking()
+            .AnyAsync();
+
+        Assert.False(commentsExist);
+    }
+
+    [Fact]
+    public async Task CreateComment_WithUnsafeHtml_PersistsSanitizedMessage()
+    {
+        await ClearCommentsAsync();
+
+        const string unsafeMessage =
+            "Hello <strong>world</strong> <i>today</i> " +
+            "<code>value</code>" +
+            "<a href=\"https://example.com\" title=\"Example\">link</a>" +
+            "<script>alert('xss')</script>";
+
+        const string expectedMessage =
+            "Hello <strong>world</strong> <i>today</i> " +
+            "<code>value</code>" +
+            "<a href=\"https://example.com\" title=\"Example\">link</a>";
+
+        var request = new CreateCommentRequest(
+            "User1",
+            "user@example.com",
+            null,
+            unsafeMessage,
+            null,
+            FakeCaptchaValidator.ValidToken);
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/comments",
+            request);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var result =
+            await response.Content.ReadFromJsonAsync<CreateCommentResponse>();
+
+        Assert.NotNull(result);
+        Assert.NotEqual(Guid.Empty, result.Id);
+
+        using var scope = _factory.Services.CreateScope();
+
+        var dbContext = scope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
+
+        var storedComment = await dbContext.Comments
+            .AsNoTracking()
+            .SingleAsync();
+
+        Assert.Equal(result.Id, storedComment.Id);
+        Assert.Equal(expectedMessage, storedComment.Message);
+        Assert.DoesNotContain(
+            "script",
+            storedComment.Message,
+            StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(
+            "alert",
+            storedComment.Message,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CreateComment_WithOnlyUnsafeHtml_ReturnsBadRequestAndDoesNotPersistComment()
+    {
+        await ClearCommentsAsync();
+
+        var request = new CreateCommentRequest(
+            "User1",
+            "user1@example.com",
+            null,
+            "<script>alert('xss')</script>",
+            null,
+            FakeCaptchaValidator.ValidToken);
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/comments",
+            request);
+
+        await ProblemDetailsAssertions.AssertAsync(
+            response,
+            HttpStatusCode.BadRequest,
+            "Validation error",
+            "One or more validation errors occurred.",
+            "Comments.DomainValidation");
+
+        using var scope = _factory.Services.CreateScope();
+
+        var dbContext = scope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
+
+        var commentsExist = await dbContext.Comments
+            .AsNoTracking()
+            .AnyAsync();
+
+        Assert.False(commentsExist);
+    }
+
+    private async Task ClearCommentsAsync()
+    {
+        using var scope = _factory.Services.CreateScope();
+
+        var dbContext = scope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
+
+        await dbContext.Comments.ExecuteDeleteAsync();
+    }
+}

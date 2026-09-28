@@ -1,0 +1,16 @@
+:host {
+  display: block;
+}
+
+.avatar {
+  block-size: var(--comment-avatar-size, 2.25rem);
+  border: 1px solid rgb(255 255 255 / 55%);
+  border-radius: 50%;
+  color: #fff;
+  display: grid;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  inline-size: var(--comment-avatar-size, 2.25rem);
+  place-items: center;
+  user-select: none;
+}

@@ -45,7 +45,8 @@ public sealed class Comment
         string email,
         string? homePage,
         string message,
-        Guid? parentCommentId)
+        Guid? parentCommentId,
+        DateTimeOffset createdAt)
     {
         if (string.IsNullOrWhiteSpace(userName))
         {
@@ -125,7 +126,7 @@ public sealed class Comment
             normalizedEmail,
             normalizedHomePage,
             message,
-            DateTimeOffset.UtcNow,
+            createdAt.ToUniversalTime(),
             parentCommentId);
     }
 
@@ -134,6 +135,7 @@ public sealed class Comment
         string storageKey,
         string contentType,
         long fileSizeBytes,
+        DateTimeOffset createdAt,
         int? width = null,
         int? height = null)
     {
@@ -144,7 +146,8 @@ public sealed class Comment
             contentType,
             fileSizeBytes,
             width,
-            height);
+            height,
+            createdAt);
 
         _attachments.Add(attachment);
 

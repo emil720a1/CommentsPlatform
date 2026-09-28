@@ -1,27 +1,59 @@
-using FluentValidation;
-using FluentValidation.Results;
 using CommentsPlatform.Application.Common.Abstractions.Persistence;
+using CommentsPlatform.Application.Common.Abstractions.Security;
 using CommentsPlatform.Application.Features.Comments.Create;
+using CommentsPlatform.Application.Features.Comments.Events;
 using CommentsPlatform.Domain;
 using ErrorOr;
+using MediatR;
 using Moq;
 
 namespace CommentsPlatform.Application.UnitTests.Features.Comments.Create;
 
 public sealed class CreateCommentCommandHandlerTests
 {
+    private static readonly DateTimeOffset FixedUtcNow =
+        new(2026, 9, 25, 10, 0, 0, TimeSpan.Zero);
+
     private readonly Mock<ICommentRepository> _commentRepositoryMock;
+    private readonly Mock<ICaptchaValidator> _captchaValidatorMock;
+    private readonly Mock<TimeProvider> _timeProviderMock;
     private readonly CreateCommentCommandHandler _handler;
+    private readonly Mock<IHtmlSanitizer> _htmlSanitizerMock;
+    private readonly Mock<IPublisher> _publisherMock;
 
     public CreateCommentCommandHandlerTests()
     {
         _commentRepositoryMock = new Mock<ICommentRepository>();
+        _captchaValidatorMock = new Mock<ICaptchaValidator>();
+        _timeProviderMock = new Mock<TimeProvider>();
+        _htmlSanitizerMock = new Mock<IHtmlSanitizer>();
+        _publisherMock = new Mock<IPublisher>();
 
-        var validator = new CreateCommentCommandValidator();
+        _captchaValidatorMock.Setup(validator => validator.IsValidAsync(
+            It.IsAny<string>(),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        _timeProviderMock
+            .Setup(timeProvider => timeProvider.GetUtcNow())
+            .Returns(FixedUtcNow);
+
+        _publisherMock
+            .Setup(publisher => publisher.Publish(
+                It.IsAny<CommentCreatedEvent>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
         _handler = new CreateCommentCommandHandler(
             _commentRepositoryMock.Object,
-            validator);
+            _captchaValidatorMock.Object,
+            _htmlSanitizerMock.Object,
+            _timeProviderMock.Object,
+            _publisherMock.Object);
+
+        _htmlSanitizerMock
+            .Setup(sanitizer => sanitizer.Sanitize(It.IsAny<string>()))
+            .Returns((string message) => message);
     }
 
     [Fact]
@@ -32,7 +64,8 @@ public sealed class CreateCommentCommandHandlerTests
             "user@example.com",
             "https://example.com/",
             "Test message",
-            null);
+            null,
+            "valid-captcha-token");
 
         _commentRepositoryMock
             .Setup(repository => repository.AddAsync(
@@ -47,6 +80,12 @@ public sealed class CreateCommentCommandHandlerTests
         Assert.False(result.IsError);
         Assert.NotEqual(Guid.Empty, result.Value);
 
+        _captchaValidatorMock.Verify(
+            validator => validator.IsValidAsync(
+                command.CaptchaToken,
+                CancellationToken.None),
+            Times.Once);
+
         _commentRepositoryMock.Verify(
             repository => repository.AddAsync(
                 It.Is<Comment>(comment =>
@@ -55,13 +94,76 @@ public sealed class CreateCommentCommandHandlerTests
                     comment.Email == command.Email &&
                     comment.HomePage == command.HomePage &&
                     comment.Message == command.Message &&
-                    comment.ParentCommentId == command.ParentCommentId),
+                    comment.ParentCommentId == command.ParentCommentId &&
+                    comment.CreatedAt == FixedUtcNow),
                 CancellationToken.None),
+            Times.Once);
+
+        _timeProviderMock.Verify(
+            timeProvider => timeProvider.GetUtcNow(),
             Times.Once);
 
         _commentRepositoryMock.Verify(
             repository => repository.ExistsAsync(
                 It.IsAny<Guid>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WithValidComment_PublishesCommentCreatedEvent()
+    {
+        var command = new CreateCommentCommand(
+            "user123",
+            "user@example.com",
+            null,
+            "Test message",
+            null,
+            "valid-captcha-token");
+
+        _commentRepositoryMock
+            .Setup(repository => repository.AddAsync(
+                It.IsAny<Comment>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var result = await _handler.Handle(
+            command,
+            CancellationToken.None);
+
+        Assert.False(result.IsError);
+
+        _publisherMock.Verify(
+            publisher => publisher.Publish(
+                It.Is<CommentCreatedEvent>(eventData =>
+                    eventData.CommentId == result.Value),
+                CancellationToken.None),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenPersistenceFails_DoesNotPublishCommentCreatedEvent()
+    {
+        var command = new CreateCommentCommand(
+            "user123",
+            "user@example.com",
+            null,
+            "Test message",
+            null,
+            "valid-captcha-token");
+
+        _commentRepositoryMock
+            .Setup(repository => repository.AddAsync(
+                It.IsAny<Comment>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Persistence failed."));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _handler.Handle(command, CancellationToken.None));
+
+        _publisherMock.Verify(
+            publisher => publisher.Publish(
+                It.IsAny<CommentCreatedEvent>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -76,7 +178,8 @@ public sealed class CreateCommentCommandHandlerTests
             "user@example.com",
             "https://example.com/",
             "Test message",
-            parentCommentId);
+            parentCommentId,
+            "valid-captcha-token");
 
         _commentRepositoryMock
             .Setup(repository => repository.ExistsAsync(
@@ -114,47 +217,6 @@ public sealed class CreateCommentCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WithInvalidCommand_ReturnsValidationErrorAndDoesNotUseRepository()
-    {
-        var parentCommentId = Guid.NewGuid();
-
-        var command = new CreateCommentCommand(
-            string.Empty,
-            "user@example.com",
-            "https://example.com/",
-            "Test message",
-            parentCommentId);
-
-        var result = await _handler.Handle(
-            command,
-            CancellationToken.None);
-
-        Assert.True(result.IsError);
-
-        var error = Assert.Single(result.Errors);
-
-        Assert.Equal(
-            "Comments.UserName.Required",
-            error.Code);
-
-        Assert.Equal(
-            ErrorType.Validation,
-            error.Type);
-
-        _commentRepositoryMock.Verify(
-            repository => repository.ExistsAsync(
-                It.IsAny<Guid>(),
-                It.IsAny<CancellationToken>()),
-            Times.Never);
-
-        _commentRepositoryMock.Verify(
-            repository => repository.AddAsync(
-                It.IsAny<Comment>(),
-                It.IsAny<CancellationToken>()),
-            Times.Never);
-    }
-
-    [Fact]
     public async Task Handle_WithExistingParentComment_ReturnsCommentIdAndPersistsReply()
     {
         var parentCommentId = Guid.NewGuid();
@@ -164,7 +226,8 @@ public sealed class CreateCommentCommandHandlerTests
             "user@example.com",
             "https://example.com/",
             "Test message",
-            parentCommentId);
+            parentCommentId,
+            "valid-captcha-token");
 
         _commentRepositoryMock.Setup(
             repository => repository.ExistsAsync(
@@ -203,26 +266,15 @@ public sealed class CreateCommentCommandHandlerTests
     [Fact]
     public async Task Handle_WhenDomainFactoryRejectsCommand_ReturnsDomainValidationError()
     {
-        var validatorMock = new Mock<IValidator<CreateCommentCommand>>();
-
-        validatorMock
-            .Setup(validator => validator.ValidateAsync(
-                It.IsAny<CreateCommentCommand>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ValidationResult());
-
-        var handler = new CreateCommentCommandHandler(
-            _commentRepositoryMock.Object,
-            validatorMock.Object);
-
         var command = new CreateCommentCommand(
             string.Empty,
             "user@example.com",
             "https://example.com/",
             "Test message",
-            null);
+            null,
+            "valid-captcha-token");
 
-        var result = await handler.Handle(
+        var result = await _handler.Handle(
             command,
             CancellationToken.None);
 
@@ -231,87 +283,6 @@ public sealed class CreateCommentCommandHandlerTests
 
         Assert.Equal("Comments.DomainValidation", error.Code);
         Assert.Equal(ErrorType.Validation, error.Type);
-
-        validatorMock.Verify(
-            validator => validator.ValidateAsync(
-                command,
-                CancellationToken.None),
-            Times.Once);
-
-        _commentRepositoryMock.Verify(
-            repository => repository.ExistsAsync(
-                It.IsAny<Guid>(),
-                It.IsAny<CancellationToken>()),
-            Times.Never);
-
-        _commentRepositoryMock.Verify(
-            repository => repository.AddAsync(
-                It.IsAny<Comment>(),
-                It.IsAny<CancellationToken>()),
-            Times.Never);
-    }
-
-    [Fact]
-    public async Task Handle_WithMultipleValidationFailures_ReturnsAllValidationErrorsAndDoesNotUseRepository()
-    {
-        var validatorMock = new Mock<IValidator<CreateCommentCommand>>();
-
-        var validationResult = new ValidationResult(
-        [
-            new ValidationFailure(
-                nameof(CreateCommentCommand.UserName),
-                "User name is required.")
-            {
-                ErrorCode = "Comments.UserName.Required"
-            },
-            new ValidationFailure(
-                nameof(CreateCommentCommand.Email),
-                "Email is required.")
-            {
-                ErrorCode = "Comments.Email.Required"
-            }
-        ]);
-
-        validatorMock
-            .Setup(validator => validator.ValidateAsync(
-                It.IsAny<CreateCommentCommand>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(validationResult);
-
-        var handler = new CreateCommentCommandHandler(
-            _commentRepositoryMock.Object,
-            validatorMock.Object);
-
-        var command = new CreateCommentCommand(
-            string.Empty,
-            string.Empty,
-            null,
-            "Test message",
-            null);
-
-        var result = await handler.Handle(
-            command,
-            CancellationToken.None);
-
-        Assert.True(result.IsError);
-        Assert.Collection(
-            result.Errors,
-            error =>
-            {
-                Assert.Equal("Comments.UserName.Required", error.Code);
-                Assert.Equal(ErrorType.Validation, error.Type);
-            },
-            error =>
-            {
-                Assert.Equal("Comments.Email.Required", error.Code);
-                Assert.Equal(ErrorType.Validation, error.Type);
-            });
-
-        validatorMock.Verify(
-            validator => validator.ValidateAsync(
-                command,
-                CancellationToken.None),
-            Times.Once);
 
         _commentRepositoryMock.Verify(
             repository => repository.ExistsAsync(
@@ -329,7 +300,6 @@ public sealed class CreateCommentCommandHandlerTests
     [Fact]
     public async Task Handle_WithValidCommand_ForwardsCancellationToken()
     {
-        var validatorMock = new Mock<IValidator<CreateCommentCommand>>();
         using var cancellationTokenSource = new CancellationTokenSource();
         var cancellationToken = cancellationTokenSource.Token;
 
@@ -338,13 +308,8 @@ public sealed class CreateCommentCommandHandlerTests
             "user@example.com",
             "https://example.com/",
             "Test message",
-            null);
-
-        validatorMock
-            .Setup(validator => validator.ValidateAsync(
-                command,
-                cancellationToken))
-            .ReturnsAsync(new ValidationResult());
+            null,
+            "valid-captcha-token");
 
         _commentRepositoryMock
             .Setup(repository => repository.AddAsync(
@@ -352,19 +317,15 @@ public sealed class CreateCommentCommandHandlerTests
                 cancellationToken))
             .Returns(Task.CompletedTask);
 
-        var handler = new CreateCommentCommandHandler(
-            _commentRepositoryMock.Object,
-            validatorMock.Object);
-
-        var result = await handler.Handle(
+        var result = await _handler.Handle(
             command,
             cancellationToken);
 
         Assert.False(result.IsError);
 
-        validatorMock.Verify(
-            validator => validator.ValidateAsync(
-                command,
+        _captchaValidatorMock.Verify(
+            validator => validator.IsValidAsync(
+                command.CaptchaToken,
                 cancellationToken),
             Times.Once);
 
@@ -373,5 +334,172 @@ public sealed class CreateCommentCommandHandlerTests
                 It.IsAny<Comment>(),
                 cancellationToken),
             Times.Once);
+
+        _publisherMock.Verify(
+            publisher => publisher.Publish(
+                It.Is<CommentCreatedEvent>(eventData =>
+                    eventData.CommentId == result.Value),
+                cancellationToken),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WithInvalidCaptcha_ReturnsInvalidCaptchaAndDoesNotUseRepository()
+    {
+        var parentCommentId = Guid.NewGuid();
+        const string captchaToken = "invalid-captcha-token";
+
+        _captchaValidatorMock
+            .Setup(validator => validator.IsValidAsync(
+                captchaToken,
+                CancellationToken.None))
+            .ReturnsAsync(false);
+
+        var command = new CreateCommentCommand(
+            "user123",
+            "user@example.com",
+            "https://example.com/",
+            "Test message",
+            parentCommentId,
+            captchaToken);
+
+        var result = await _handler.Handle(
+            command,
+            CancellationToken.None);
+
+        Assert.True(result.IsError);
+
+        var error = Assert.Single(result.Errors);
+
+        Assert.Equal(CreateCommentErrors.InvalidCaptcha.Code, error.Code);
+        Assert.Equal(CreateCommentErrors.InvalidCaptcha.Type, error.Type);
+
+        _captchaValidatorMock.Verify(
+            validator => validator.IsValidAsync(
+                captchaToken,
+                CancellationToken.None),
+            Times.Once);
+
+        _commentRepositoryMock.Verify(
+            repository => repository.ExistsAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+
+        _commentRepositoryMock.Verify(
+            repository => repository.AddAsync(
+                It.IsAny<Comment>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WithInvalidCaptcha_ReturnsBeforeDomainValidation()
+    {
+        const string captchaToken = "invalid-captcha-token";
+
+        _captchaValidatorMock
+            .Setup(validator => validator.IsValidAsync(
+                captchaToken,
+                CancellationToken.None))
+            .ReturnsAsync(false);
+
+        var command = new CreateCommentCommand(
+            string.Empty,
+            "user@example.com",
+            "https://example.com/",
+            "Test message",
+            null,
+            captchaToken);
+
+        var result = await _handler.Handle(
+            command,
+            CancellationToken.None);
+
+        Assert.True(result.IsError);
+
+        var error = Assert.Single(result.Errors);
+
+        Assert.Equal(CreateCommentErrors.InvalidCaptcha.Code, error.Code);
+        Assert.NotEqual("Comments.DomainValidation", error.Code);
+
+        _commentRepositoryMock.Verify(
+            repository => repository.AddAsync(
+                It.IsAny<Comment>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WithUnsafeHtml_PersistsSanitizedMessage()
+    {
+        const string unsafeMessage =
+            "<strong>Hello</strong><script>alert('xss')</script>";
+        const string sanitizedMessage = "<strong>Hello</strong>";
+
+        var command = new CreateCommentCommand(
+            "user123",
+            "user@example.com",
+            null,
+            unsafeMessage,
+            null,
+            "valid-captcha-token");
+
+        _htmlSanitizerMock
+            .Setup(sanitizer => sanitizer.Sanitize(unsafeMessage))
+            .Returns(sanitizedMessage);
+
+        var result = await _handler.Handle(
+            command,
+            CancellationToken.None);
+
+        Assert.False(result.IsError);
+
+        _htmlSanitizerMock.Verify(
+            sanitizer => sanitizer.Sanitize(unsafeMessage),
+            Times.Once);
+
+        _commentRepositoryMock.Verify(
+            repository => repository.AddAsync(
+                It.Is<Comment>(comment =>
+                    comment.Message == sanitizedMessage),
+                CancellationToken.None),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenSanitizedMessageIsEmpty_ReturnsValidationErrorAndDoesNotPersist()
+    {
+        const string unsafeMessage =
+            "<script>alert('xss')</script>";
+
+        var command = new CreateCommentCommand(
+            "user123",
+            "user@example.com",
+            null,
+            unsafeMessage,
+            null,
+            "valid-captcha-token");
+
+        _htmlSanitizerMock
+            .Setup(sanitizer => sanitizer.Sanitize(unsafeMessage))
+            .Returns(string.Empty);
+
+        var result = await _handler.Handle(
+            command,
+            CancellationToken.None);
+
+        Assert.True(result.IsError);
+
+        var error = Assert.Single(result.Errors);
+
+        Assert.Equal("Comments.DomainValidation", error.Code);
+        Assert.Equal(ErrorType.Validation, error.Type);
+
+        _commentRepositoryMock.Verify(
+            repository => repository.AddAsync(
+                It.IsAny<Comment>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }

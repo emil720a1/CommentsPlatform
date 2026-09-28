@@ -1,4 +1,13 @@
+using CommentsPlatform.Application.Common.Abstractions.Persistence;
+using CommentsPlatform.Application.Common.Abstractions.Security;
+using CommentsPlatform.Application.Common.Abstractions.Storage;
 using CommentsPlatform.Infrastructure.Persistence;
+using CommentsPlatform.Infrastructure.Persistence.Repositories;
+using CommentsPlatform.Infrastructure.Security.CloudflareTurnstile;
+using CommentsPlatform.Infrastructure.Security.HtmlSanitization;
+using CommentsPlatform.Application.Features.Comments.Queries.GetComments;
+using CommentsPlatform.Infrastructure.Caching;
+using CommentsPlatform.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,7 +31,72 @@ public static class DependencyInjection
 
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseSqlServer(connectionString));
-        
+
+        services.AddScoped<ICommentRepository, CommentRepository>();
+        services.AddSingleton<IHtmlSanitizer, HtmlSanitizerService>();
+
+        services.AddOptions<CloudflareTurnstileOptions>()
+            .Bind(configuration.GetSection(
+                CloudflareTurnstileOptions.SectionName))
+            .Validate(
+                options => !string.IsNullOrWhiteSpace(options.SecretKey),
+                "Cloudflare Turnstile secret key is required.")
+            .Validate(
+                options =>
+                    Uri.TryCreate(
+                        options.VerificationUrl,
+                        UriKind.Absolute,
+                        out var verificationUri) &&
+                    verificationUri.Scheme == Uri.UriSchemeHttps,
+                "Cloudflare Turnstile verification URL must use HTTPS.")
+            .Validate(
+                options => options.TimeoutSeconds > 0,
+                "Cloudflare Turnstile timeout must be greater than zero.")
+            .ValidateOnStart();
+
+        services.AddHttpClient<
+            ICaptchaValidator,
+            CloudflareTurnstileValidator>();
+
+        services.AddOptions<LocalFileStorageOptions>()
+            .Bind(configuration.GetSection(
+                LocalFileStorageOptions.SectionName))
+            .Validate(
+                options => !string.IsNullOrWhiteSpace(options.RootPath),
+                "File storage root path is required.")
+            .ValidateOnStart();
+
+        services.AddSingleton<IFileStorage, LocalFileStorage>();
+
+        var commentsCacheSection = configuration.GetSection(
+            CommentsCacheOptions.SectionName);
+
+        var commentsCacheOptions =
+            commentsCacheSection.Get<CommentsCacheOptions>() ?? new();
+
+        services.AddOptions<CommentsCacheOptions>()
+            .Bind(commentsCacheSection)
+            .Validate(
+                options =>
+                    !options.Enabled ||
+                    options.DurationSeconds > 0,
+                "Comments cache duration must be greater than zero when caching is enabled.")
+            .ValidateOnStart();
+
+        if (commentsCacheOptions.Enabled)
+        {
+            services.AddMemoryCache();
+            services.AddSingleton<
+                ICommentsQueryCache,
+                MemoryCommentsQueryCache>();
+        }
+        else
+        {
+            services.AddSingleton<
+                ICommentsQueryCache,
+                NoOpCommentsQueryCache>();
+        }
+
         return services;
     }
 }

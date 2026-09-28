@@ -1,0 +1,199 @@
+<section class="comment-form">
+  @if (replyToUserName(); as userName) {
+    <h3>Відповідь для {{ userName }}</h3>
+  } @else {
+    <h2>Додати коментар</h2>
+  }
+
+  @if (successMessage(); as message) {
+    <p class="form-notice form-notice--success" role="status">{{ message }}</p>
+  }
+
+  @if (apiErrorMessage(); as error) {
+    <p class="form-notice form-notice--error" role="alert">{{ error }}</p>
+  }
+
+  <form [formGroup]="commentForm" (ngSubmit)="onSubmit()" novalidate>
+    <div>
+      <label [for]="fieldIdPrefix + '-userName'">Ім’я користувача</label>
+      <input
+        [id]="fieldIdPrefix + '-userName'"
+        type="text"
+        formControlName="userName"
+        autocomplete="username"
+      />
+
+      @if (commentForm.controls.userName.touched) {
+        @if (commentForm.controls.userName.hasError('required')) {
+          <small role="alert">Введіть ім’я користувача.</small>
+        } @else if (commentForm.controls.userName.hasError('pattern')) {
+          <small role="alert">Ім’я може містити лише латинські літери та цифри.</small>
+        }
+      }
+    </div>
+
+    <div>
+      <label [for]="fieldIdPrefix + '-email'">Email</label>
+      <input
+        [id]="fieldIdPrefix + '-email'"
+        type="email"
+        formControlName="email"
+        autocomplete="email"
+      />
+
+      @if (commentForm.controls.email.touched) {
+        @if (commentForm.controls.email.hasError('required')) {
+          <small role="alert">Введіть email.</small>
+        } @else if (commentForm.controls.email.hasError('email')) {
+          <small role="alert">Введіть коректний email.</small>
+        }
+      }
+    </div>
+
+    <div>
+      <label [for]="fieldIdPrefix + '-homePage'">Домашня сторінка</label>
+      <input
+        [id]="fieldIdPrefix + '-homePage'"
+        type="url"
+        formControlName="homePage"
+        autocomplete="url"
+        placeholder="https://example.com"
+      />
+
+      @if (
+        commentForm.controls.homePage.touched && commentForm.controls.homePage.hasError('httpUrl')
+      ) {
+        <small role="alert">Введіть адресу, яка починається з http:// або https://.</small>
+      }
+    </div>
+
+    <div>
+      <label [for]="fieldIdPrefix + '-message'">Повідомлення</label>
+
+      <div class="formatting-toolbar" role="toolbar" aria-label="Форматування повідомлення">
+        <button
+          type="button"
+          title="Жирний текст"
+          aria-label="Жирний текст"
+          (click)="applyInlineFormat('strong')"
+        >
+          <strong>Ж</strong>
+        </button>
+        <button type="button" title="Курсив" aria-label="Курсив" (click)="applyInlineFormat('i')">
+          <i>К</i>
+        </button>
+        <button type="button" title="Код" aria-label="Код" (click)="applyInlineFormat('code')">
+          &lt;/&gt;
+        </button>
+        <button
+          type="button"
+          title="Посилання"
+          aria-label="Додати посилання"
+          (click)="applyLinkFormat()"
+        >
+          Лінк
+        </button>
+      </div>
+
+      <textarea
+        #messageInput
+        [id]="fieldIdPrefix + '-message'"
+        formControlName="message"
+        rows="5"
+        [attr.aria-describedby]="fieldIdPrefix + '-formattingHint'"
+      ></textarea>
+
+      <small [id]="fieldIdPrefix + '-formattingHint'">
+        Виділіть текст і виберіть дозволене форматування. HTML буде перевірено сервером.
+      </small>
+
+      @if (formattingError(); as error) {
+        <small role="alert">{{ error }}</small>
+      }
+
+      @if (
+        commentForm.controls.message.touched &&
+        (commentForm.controls.message.hasError('required') ||
+          commentForm.controls.message.hasError('whitespace'))
+      ) {
+        <small role="alert">Введіть повідомлення.</small>
+      }
+    </div>
+
+    <div class="attachment-field">
+      <span class="field-label" [id]="fieldIdPrefix + '-attachmentLabel'">Вкладення</span>
+
+      <input
+        #attachmentInput
+        class="upload-input"
+        [id]="fieldIdPrefix + '-attachment'"
+        type="file"
+        accept="image/jpeg,image/png,image/gif,text/plain"
+        [attr.aria-labelledby]="fieldIdPrefix + '-attachmentLabel'"
+        [attr.aria-describedby]="fieldIdPrefix + '-attachmentHint'"
+        (change)="onFileSelected($event)"
+      />
+
+      <label
+        class="upload-target"
+        [class.upload-target--invalid]="attachmentError() !== null"
+        [for]="fieldIdPrefix + '-attachment'"
+      >
+        <span class="upload-title">Обрати файл</span>
+        <small [id]="fieldIdPrefix + '-attachmentHint'">
+          JPEG, PNG, GIF або TXT, максимум 5 MiB
+        </small>
+      </label>
+
+      @if (attachmentError(); as error) {
+        <small role="alert">{{ error }}</small>
+      }
+
+      @if (selectedFile(); as file) {
+        <div class="selected-file" role="status">
+          <span class="selected-file__details">
+            <strong>{{ file.name }}</strong>
+            <small>{{ formatFileSize(file.size) }}</small>
+          </span>
+          <button
+            class="remove-file-button"
+            type="button"
+            [attr.aria-label]="'Видалити файл ' + file.name"
+            (click)="removeSelectedFile()"
+          >
+            Видалити
+          </button>
+        </div>
+      }
+    </div>
+
+    <div class="captcha-field">
+      <span class="field-label">Перевірка безпеки</span>
+      <app-turnstile-widget (tokenChange)="onCaptchaTokenChange($event)" />
+
+      @if (
+        commentForm.controls.captchaToken.touched &&
+        commentForm.controls.captchaToken.hasError('required')
+      ) {
+        <small role="alert">Підтвердьте CAPTCHA.</small>
+      }
+    </div>
+
+    <div class="form-actions">
+      <button class="submit-button" type="submit" [disabled]="isSubmitting()">
+        {{ isSubmitting() ? 'Надсилання...' : 'Надіслати' }}
+      </button>
+
+      @if (parentCommentId() !== null) {
+        <button
+          class="secondary-button"
+          type="button"
+          [disabled]="isSubmitting()"
+          (click)="cancelReply()"
+        >
+          Скасувати відповідь
+        </button>
+      }
+    </div>
+  </form>
+</section>

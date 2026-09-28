@@ -1,0 +1,78 @@
+<main>
+  <header class="page-header">
+    <h1>Коментарі</h1>
+
+    @if (commentsPage(); as page) {
+      <span class="comments-count" aria-live="polite">Усього: {{ page.totalCount }}</span>
+    }
+  </header>
+
+  <app-comment-form class="main-comment-form" (commentCreated)="onCommentCreated($event)" />
+
+  @if (submissionWarning(); as warning) {
+    <p class="page-notice page-notice--warning" role="alert">{{ warning }}</p>
+  }
+
+  <section class="sorting" aria-label="Сортування коментарів">
+    <label for="comment-sort-field">Сортувати</label>
+    <select
+      id="comment-sort-field"
+      [value]="parameters().sortBy"
+      (change)="changeSortField($event)"
+    >
+      <option value="CreatedAt">Датою створення</option>
+      <option value="UserName">Ім’ям користувача</option>
+      <option value="Email">Email</option>
+    </select>
+
+    <label for="comment-sort-direction">Напрямок</label>
+    <select
+      id="comment-sort-direction"
+      [value]="parameters().sortDirection"
+      (change)="changeSortDirection($event)"
+    >
+      <option value="Descending">За спаданням</option>
+      <option value="Ascending">За зростанням</option>
+    </select>
+  </section>
+
+  @if (isLoading()) {
+    <p class="page-state" aria-live="polite">Завантаження коментарів...</p>
+  } @else if (errorMessage(); as error) {
+    <div class="page-state page-state--error" role="alert">
+      <p>{{ error }}</p>
+      <button type="button" (click)="loadComments()">Спробувати ще раз</button>
+    </div>
+  } @else if (commentsPage(); as page) {
+    @if (page.items.length === 0) {
+      <p class="page-state">Коментарів поки немає. Будьте першим, хто залишить коментар.</p>
+    } @else {
+      <app-comments-list [comments]="page.items" (replyRequested)="startReply($event)" />
+
+      @if (replyingTo(); as reply) {
+        <section class="reply-composer" [attr.aria-label]="'Форма відповіді для ' + reply.userName">
+          <app-comment-form
+            [parentCommentId]="reply.id"
+            [replyToUserName]="reply.userName"
+            (commentCreated)="onCommentCreated($event)"
+            (replyCancelled)="cancelReply()"
+          />
+        </section>
+      }
+
+      <p class="results-summary" aria-live="polite">
+        Сторінка {{ page.page }} із {{ page.totalPages }}. Усього коментарів: {{ page.totalCount }}.
+      </p>
+
+      <nav class="pagination" aria-label="Пагінація коментарів">
+        <button type="button" [disabled]="!page.hasPreviousPage" (click)="goToPreviousPage()">
+          Попередня
+        </button>
+        <span aria-current="page">Сторінка {{ page.page }} із {{ page.totalPages }}</span>
+        <button type="button" [disabled]="!page.hasNextPage" (click)="goToNextPage()">
+          Наступна
+        </button>
+      </nav>
+    }
+  }
+</main>

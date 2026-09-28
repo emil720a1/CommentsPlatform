@@ -42,6 +42,11 @@ public sealed class CreateCommentCommandValidator
             .WithMessage("Parent comment id cannot be empty.")
             .WithErrorCode("Comments.ParentCommentId.Empty")
             .When(command => command.ParentCommentId.HasValue);
+
+        RuleFor(command => command.CaptchaToken)
+            .NotEmpty()
+            .WithMessage("CAPTCHA token is required.")
+            .WithErrorCode("Comments.Captcha.Required");
     }
 
     private static bool BeValidHomePage(string? homePage)

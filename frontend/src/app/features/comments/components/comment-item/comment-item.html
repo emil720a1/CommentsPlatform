@@ -1,0 +1,47 @@
+<article class="comment-card">
+  <app-comment-avatar [userName]="comment().userName" />
+
+  <header class="comment-meta">
+    @if (comment().homePage) {
+      <a
+        class="comment-author comment-author--link"
+        [href]="comment().homePage"
+        target="_blank"
+        rel="noopener noreferrer"
+        [attr.aria-label]="'Домашня сторінка користувача ' + comment().userName"
+      >
+        {{ comment().userName }}
+      </a>
+    } @else {
+      <strong class="comment-author">{{ comment().userName }}</strong>
+    }
+
+    <a class="comment-email" [href]="'mailto:' + comment().email">{{ comment().email }}</a>
+
+    <time [attr.datetime]="comment().createdAt">
+      {{ comment().createdAt | date: 'medium' }}
+    </time>
+  </header>
+
+  <div class="comment-message" [innerHTML]="comment().message"></div>
+
+  @if (comment().attachments.length > 0) {
+    <div class="comment-attachments">
+      @for (attachment of comment().attachments; track attachment.id) {
+        <app-comment-attachment [attachment]="attachment" />
+      }
+    </div>
+  }
+
+  <div class="comment-actions">
+    <button class="reply-button" type="button" (click)="requestReply()">Відповісти</button>
+  </div>
+
+  @if (comment().replies.length > 0) {
+    <section class="replies" aria-label="Відповіді">
+      @for (reply of comment().replies; track reply.id) {
+        <app-comment-item [comment]="reply" (replyRequested)="replyRequested.emit($event)" />
+      }
+    </section>
+  }
+</article>

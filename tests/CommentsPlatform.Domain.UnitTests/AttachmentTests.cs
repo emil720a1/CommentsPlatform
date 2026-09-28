@@ -2,21 +2,20 @@ namespace CommentsPlatform.Domain.UnitTests;
 
 public sealed class AttachmentTests
 {
+   private static readonly DateTimeOffset CreatedAt =
+      new(2026, 9, 25, 10, 0, 0, TimeSpan.Zero);
+
    [Fact]
    public void AddAttachment_WithValidFileMetadata_AddsAttachmentToComment()
    {
-      var comment = Comment.Create(
-         userName: "username",
-         email: "user@example.com",
-         homePage: null,
-         message: "message",
-         parentCommentId: null);
+      var comment = CreateComment();
 
       var attachment = comment.AddAttachment(
          originalFileName: "document.pdf",
          storageKey: "attachments/document.pdf",
          contentType: "application/pdf",
          fileSizeBytes: 1024,
+         createdAt: CreatedAt,
          width: null,
          height: null
       );
@@ -27,6 +26,7 @@ public sealed class AttachmentTests
       Assert.Null(attachment.Width);
       Assert.Null(attachment.Height);
       Assert.Equal(TimeSpan.Zero, attachment.CreatedAt.Offset);
+      Assert.Equal(CreatedAt, attachment.CreatedAt);
       Assert.Equal("document.pdf", attachment.OriginalFileName);
       Assert.Equal("attachments/document.pdf", attachment.StorageKey);
       Assert.Equal("application/pdf", attachment.ContentType);
@@ -39,17 +39,13 @@ public sealed class AttachmentTests
    [Fact]
    public void AddAttachment_WithValidImageMetadata_PreservesDimensions()
    {
-      var comment = Comment.Create(
-         userName: "username",
-         email: "user@example.com",
-         homePage: null,
-         message: "message",
-         parentCommentId: null);
+      var comment = CreateComment();
 
       var attachment = comment.AddAttachment(
          originalFileName: "photo.png",
          storageKey: "attachments/photo.png",
          contentType: "image/png",
+         createdAt: CreatedAt,
          fileSizeBytes: 2048,
          width: 1920,
          height: 1080);
@@ -69,18 +65,14 @@ public sealed class AttachmentTests
    public void AddAttachment_WithMissingOriginalFileName_ThrowsArgumentException(
       string? invalidOriginalFileName)
    {
-      var comment = Comment.Create(
-         userName: "username",
-         email: "user@example.com",
-         homePage: null,
-         message: "message",
-         parentCommentId: null);
+      var comment = CreateComment();
 
       var exception = Assert.Throws<ArgumentException>(() =>
          comment.AddAttachment(
             originalFileName: invalidOriginalFileName!,
             storageKey: "attachments/photo.png",
             contentType: "image/png",
+            createdAt: CreatedAt,
             fileSizeBytes: 2048,
             width: 1920,
             height: 1080));
@@ -96,18 +88,14 @@ public sealed class AttachmentTests
    public void AddAttachment_WithMissingStorageKey_ThrowsArgumentException(
       string? invalidStorageKey)
    {
-      var comment = Comment.Create(
-         userName: "username",
-         email: "user@example.com",
-         homePage: null,
-         message: "message",
-         parentCommentId: null);
+      var comment = CreateComment();
 
       var exception = Assert.Throws<ArgumentException>(() =>
          comment.AddAttachment(
             originalFileName: "photo.png",
             storageKey: invalidStorageKey!,
             contentType: "image/png",
+            createdAt: CreatedAt,
             fileSizeBytes: 2048,
             width: 1920,
             height: 1080));
@@ -123,18 +111,14 @@ public sealed class AttachmentTests
    public void AddAttachment_WithMissingContentType_ThrowsArgumentException(
       string? invalidContentType)
    {
-      var comment = Comment.Create(
-         userName: "username",
-         email: "user@example.com",
-         homePage: null,
-         message: "message",
-         parentCommentId: null);
+      var comment = CreateComment();
 
       var exception = Assert.Throws<ArgumentException>(() =>
          comment.AddAttachment(
             originalFileName: "photo.png",
             storageKey: "attachments/photo.png",
             contentType: invalidContentType!,
+            createdAt: CreatedAt,
             fileSizeBytes: 2048,
             width: 1920,
             height: 1080));
@@ -149,18 +133,14 @@ public sealed class AttachmentTests
    public void AddAttachment_WithNonPositiveFileSize_ThrowsArgumentOutOfRangeException(
       long invalidFileSizeBytes)
    {
-      var comment = Comment.Create(
-         userName: "username",
-         email: "user@example.com",
-         homePage: null,
-         message: "message",
-         parentCommentId: null);
+      var comment = CreateComment();
 
       var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
          comment.AddAttachment(
             originalFileName: "photo.png",
             storageKey: "attachments/photo.png",
             contentType: "image/png",
+            createdAt: CreatedAt,
             fileSizeBytes: invalidFileSizeBytes,
             width: 1920,
             height: 1080));
@@ -176,18 +156,14 @@ public sealed class AttachmentTests
       int? width,
       int? height)
    {
-      var comment = Comment.Create(
-         userName: "username",
-         email: "user@example.com",
-         homePage: null,
-         message: "message",
-         parentCommentId: null);
+      var comment = CreateComment();
 
       Assert.Throws<ArgumentException>(() =>
          comment.AddAttachment(
             originalFileName: "photo.png",
             storageKey: "attachments/photo.png",
             contentType: "image/png",
+            createdAt: CreatedAt,
             fileSizeBytes: 2048,
             width: width,
             height: height));
@@ -205,18 +181,14 @@ public sealed class AttachmentTests
       int height,
       string expectedParamName)
    {
-      var comment = Comment.Create(
-         userName: "username",
-         email: "user@example.com",
-         homePage: null,
-         message: "message",
-         parentCommentId: null);
+      var comment = CreateComment();
 
       var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
          comment.AddAttachment(
             originalFileName: "photo.png",
             storageKey: "attachments/photo.png",
             contentType: "image/png",
+            createdAt: CreatedAt,
             fileSizeBytes: 2048,
             width: width,
             height: height));
@@ -229,17 +201,13 @@ public sealed class AttachmentTests
    [Fact]
    public void Attachments_WhenModifiedExternally_ThrowsNotSupportedException()
    {
-      var comment = Comment.Create(
-         userName: "username",
-         email: "user@example.com",
-         homePage: null,
-         message: "message",
-         parentCommentId: null);
+      var comment = CreateComment();
 
       var attachment = comment.AddAttachment(
          originalFileName: "document.pdf",
          storageKey: "attachments/document.pdf",
          contentType: "application/pdf",
+         createdAt: CreatedAt,
          fileSizeBytes: 1024,
          width: null,
          height: null);
@@ -254,5 +222,43 @@ public sealed class AttachmentTests
       var storedAttachment = Assert.Single(comment.Attachments);
 
       Assert.Same(attachment, storedAttachment);
+   }
+
+   [Fact]
+   public void AddAttachment_WithNonUtcCreationTime_StoresCreatedAtInUtc()
+   {
+      var comment = CreateComment();
+
+      var nonUtcCreatedAt = new DateTimeOffset(
+         2026,
+         9,
+         25,
+         12,
+         0,
+         0,
+         TimeSpan.FromHours(2));
+
+      var attachment = comment.AddAttachment(
+         originalFileName: "document.pdf",
+         storageKey: "attachments/document.pdf",
+         contentType: "application/pdf",
+         fileSizeBytes: 1024,
+         createdAt: nonUtcCreatedAt);
+
+      Assert.Equal(TimeSpan.Zero, attachment.CreatedAt.Offset);
+      Assert.Equal(
+         nonUtcCreatedAt.ToUniversalTime(),
+         attachment.CreatedAt);
+   }
+
+   private static Comment CreateComment()
+   {
+      return Comment.Create(
+         userName: "username",
+         email: "user@example.com",
+         homePage: null,
+         message: "message",
+         parentCommentId: null,
+         createdAt: CreatedAt);
    }
 }

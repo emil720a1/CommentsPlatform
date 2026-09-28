@@ -1,0 +1,27 @@
+<section class="attachment" [attr.aria-label]="'Вкладення ' + attachment().originalFileName">
+  @if (isImage() && !previewFailed()) {
+    <button
+      type="button"
+      class="preview-button"
+      [attr.aria-label]="'Відкрити зображення ' + attachment().originalFileName"
+      (click)="openLightbox()"
+    >
+      <img [src]="previewUrl()" [alt]="attachment().originalFileName" (error)="onPreviewError()" />
+    </button>
+  } @else if (isImage()) {
+    <p role="status">Попередній перегляд недоступний.</p>
+  }
+
+  <a [href]="downloadUrl()" download>
+    {{ attachment().originalFileName }}
+  </a>
+  <span>{{ formattedSize() }}</span>
+</section>
+
+@if (lightboxOpen()) {
+  <app-image-lightbox
+    [imageUrl]="previewUrl()"
+    [alternativeText]="attachment().originalFileName"
+    (closed)="closeLightbox()"
+  />
+}

@@ -2,6 +2,9 @@ namespace CommentsPlatform.Domain.UnitTests;
 
 public sealed class CommentTests
 {
+    private static readonly DateTimeOffset CreatedAt =
+        new(2026, 9, 25, 10, 0, 0, TimeSpan.Zero);
+
     [Fact]
     public void Create_WithValidTopLevelComment_ReturnsExpectedComment()
     {
@@ -10,16 +13,13 @@ public sealed class CommentTests
         const string homePage = "https://example.com/";
         const string message = "message";
 
-        var beforeCreation = DateTimeOffset.UtcNow;
-
         var comment = Comment.Create(
             username,
             email,
             homePage,
             message,
-            null);
-
-        var afterCreation = DateTimeOffset.UtcNow;
+            null,
+            CreatedAt);
 
         Assert.NotEqual(Guid.Empty, comment.Id);
         Assert.Equal(username, comment.UserName);
@@ -28,7 +28,7 @@ public sealed class CommentTests
         Assert.Equal(message, comment.Message);
         Assert.Null(comment.ParentCommentId);
         Assert.Equal(TimeSpan.Zero, comment.CreatedAt.Offset);
-        Assert.InRange(comment.CreatedAt, beforeCreation, afterCreation);
+        Assert.Equal(CreatedAt, comment.CreatedAt);
     }
 
     [Fact]
@@ -44,8 +44,8 @@ public sealed class CommentTests
             email,
             null,
             message,
-            parentCommentId
-        );
+            parentCommentId,
+            CreatedAt);
 
         Assert.Equal(parentCommentId, comment.ParentCommentId);
         Assert.Null(comment.HomePage);
@@ -65,7 +65,8 @@ public sealed class CommentTests
                 email: "user@example.com",
                 homePage: null,
                 message: "Test message",
-                parentCommentId: null));
+                parentCommentId: null,
+                createdAt: CreatedAt));
 
         Assert.Equal("userName", exception.ParamName);
     }
@@ -85,7 +86,8 @@ public sealed class CommentTests
                 email: "user@example.com",
                 homePage: null,
                 message: "Test message",
-                parentCommentId: null));
+                parentCommentId: null,
+                createdAt: CreatedAt));
 
         Assert.Equal("userName", exception.ParamName);
     }
@@ -103,7 +105,8 @@ public sealed class CommentTests
                 email: invalidEmail!,
                 homePage: null,
                 message: "Test message",
-                parentCommentId: null));
+                parentCommentId: null,
+                createdAt: CreatedAt));
 
         Assert.Equal("email", exception.ParamName);
     }
@@ -121,7 +124,8 @@ public sealed class CommentTests
                 email: invalidEmail,
                 homePage: null,
                 message: "Test message",
-                parentCommentId: null));
+                parentCommentId: null,
+                createdAt: CreatedAt));
 
         Assert.Equal("email", exception.ParamName);
     }
@@ -141,7 +145,8 @@ public sealed class CommentTests
                 email: email,
                 homePage: invalidHomePage,
                 message: "Test message",
-                parentCommentId: null));
+                parentCommentId: null,
+                createdAt: CreatedAt));
 
         Assert.Equal("homePage", exception.ParamName);
     }
@@ -160,7 +165,8 @@ public sealed class CommentTests
                 email: email,
                 homePage: null,
                 message: invalidMessage!,
-                parentCommentId: null));
+                parentCommentId: null,
+                createdAt: CreatedAt));
 
         Assert.Equal("message", exception.ParamName);
     }
@@ -178,8 +184,33 @@ public sealed class CommentTests
                 email: email,
                 homePage: null,
                 message: message,
-                parentCommentId: Guid.Empty));
+                parentCommentId: Guid.Empty,
+                createdAt: CreatedAt));
 
         Assert.Equal("parentCommentId", exception.ParamName);
+    }
+
+    [Fact]
+    public void Create_WithNonUtcCreationTime_StoresCreatedAtInUtc()
+    {
+        var nonUtcCreatedAt = new DateTimeOffset(
+            2026,
+            9,
+            25,
+            12,
+            0,
+            0,
+            TimeSpan.FromHours(2));
+
+        var comment = Comment.Create(
+            userName: "username",
+            email: "user@example.com",
+            homePage: null,
+            message: "message",
+            parentCommentId: null,
+            createdAt: nonUtcCreatedAt);
+
+        Assert.Equal(TimeSpan.Zero, comment.CreatedAt.Offset);
+        Assert.Equal(nonUtcCreatedAt.ToUniversalTime(), comment.CreatedAt);
     }
 }

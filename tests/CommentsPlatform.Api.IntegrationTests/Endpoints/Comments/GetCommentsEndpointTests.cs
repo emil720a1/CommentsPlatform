@@ -1,0 +1,455 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
+using CommentsPlatform.Api.Contracts.Comments;
+using CommentsPlatform.Api.Contracts.Comments.GetComments;
+using CommentsPlatform.Api.IntegrationTests.Infrastructure;
+using CommentsPlatform.Application.Features.Comments.Queries.GetComments;
+using CommentsPlatform.Domain;
+using CommentsPlatform.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace CommentsPlatform.Api.IntegrationTests.Endpoints.Comments;
+
+[Collection(ApiIntegrationTestCollection.Name)]
+public sealed class GetCommentsEndpointTests
+{
+    private static readonly DateTimeOffset SeedCreatedAt =
+        new(2026, 9, 25, 10, 0, 0, TimeSpan.Zero);
+
+    private readonly CommentsPlatformWebApplicationFactory _factory;
+    private readonly HttpClient _client;
+
+    public GetCommentsEndpointTests(
+        CommentsPlatformWebApplicationFactory factory)
+    {
+        _factory = factory;
+        _client = factory.CreateClient();
+    }
+
+    [Fact]
+    public async Task GetComments_WithDefaultParameters_ReturnsOkWithEmptyPage()
+    {
+        await ClearCommentsAsync();
+
+        var response = await _client.GetAsync("/api/comments");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var result =
+            await response.Content.ReadFromJsonAsync<GetCommentsResponse>();
+
+        Assert.NotNull(result);
+        Assert.Empty(result.Items);
+        Assert.Equal(1, result.Page);
+        Assert.Equal(25, result.PageSize);
+        Assert.Equal(0, result.TotalCount);
+        Assert.Equal(0, result.TotalPages);
+        Assert.False(result.HasPreviousPage);
+        Assert.False(result.HasNextPage);
+    }
+
+    [Fact]
+    public async Task GetComments_AfterCommentIsCreated_ReturnsFreshResult()
+    {
+        await ClearCommentsAsync();
+
+        const string requestUri =
+            "/api/comments?page=1&pageSize=25&sortBy=CreatedAt&sortDirection=Descending";
+
+        var initialResult = await _client
+            .GetFromJsonAsync<GetCommentsResponse>(requestUri);
+
+        Assert.NotNull(initialResult);
+        Assert.Empty(initialResult.Items);
+        Assert.Equal(0, initialResult.TotalCount);
+
+        var createRequest = new CreateCommentRequest(
+            "CacheUser",
+            "cache-user@example.com",
+            null,
+            "Cache invalidation integration test",
+            null,
+            FakeCaptchaValidator.ValidToken);
+
+        using var createResponse = await _client.PostAsJsonAsync(
+            "/api/comments",
+            createRequest);
+
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+
+        var createdComment = await createResponse.Content
+            .ReadFromJsonAsync<CreateCommentResponse>();
+
+        Assert.NotNull(createdComment);
+
+        var refreshedResult = await _client
+            .GetFromJsonAsync<GetCommentsResponse>(requestUri);
+
+        Assert.NotNull(refreshedResult);
+        Assert.Equal(1, refreshedResult.TotalCount);
+
+        var returnedComment = Assert.Single(refreshedResult.Items);
+        Assert.Equal(createdComment.Id, returnedComment.Id);
+        Assert.Equal(createRequest.UserName, returnedComment.UserName);
+        Assert.Equal(createRequest.Email, returnedComment.Email);
+        Assert.Equal(createRequest.Message, returnedComment.Message);
+    }
+
+    [Theory]
+    [InlineData(
+        "/api/comments?page=0",
+        "Comments.Page.Invalid")]
+    [InlineData(
+        "/api/comments?pageSize=0",
+        "Comments.PageSize.Invalid")]
+    [InlineData(
+        "/api/comments?pageSize=101",
+        "Comments.PageSize.Invalid")]
+    [InlineData(
+        "/api/comments?sortBy=999",
+        "Request.Validation")]
+    [InlineData(
+        "/api/comments?sortDirection=999",
+        "Request.Validation")]
+    public async Task GetComments_WithInvalidQueryParameters_ReturnsBadRequest(
+        string invalidQuery,
+        string expectedErrorCode)
+    {
+        var response = await _client.GetAsync(invalidQuery);
+
+        await ProblemDetailsAssertions.AssertAsync(
+            response,
+            HttpStatusCode.BadRequest,
+            "Validation error",
+            "One or more validation errors occurred.",
+            expectedErrorCode);
+    }
+
+    [Fact]
+    public async Task GetComments_WithDescendingSort_ReturnsNewestCommentsFirstAndIncludesEmail()
+    {
+        await ClearCommentsAsync();
+
+        var oldestCreatedAt = new DateTimeOffset(
+            2026, 1, 1, 10, 0, 0, TimeSpan.Zero);
+        var middleCreatedAt = oldestCreatedAt.AddMinutes(1);
+        var newestCreatedAt = oldestCreatedAt.AddMinutes(2);
+
+        var oldestComment = CreateComment(
+            userName: "User1",
+            email: "user1@example.com",
+            homePage: null,
+            message: "Oldest comment",
+            parentCommentId: null,
+            createdAt: oldestCreatedAt);
+
+        var middleComment = CreateComment(
+            userName: "User2",
+            email: "user2@example.com",
+            homePage: "https://example.com",
+            message: "Middle comment",
+            parentCommentId: null,
+            createdAt: middleCreatedAt);
+
+        var newestComment = CreateComment(
+            userName: "User3",
+            email: "user3@example.com",
+            homePage: null,
+            message: "Newest comment",
+            parentCommentId: null,
+            createdAt: newestCreatedAt);
+
+        await SeedCommentsAsync(
+            oldestComment,
+            middleComment,
+            newestComment);
+
+        var response = await _client.GetAsync(
+            "/api/comments?page=1&pageSize=2&sortBy=CreatedAt&sortDirection=Descending");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var json = await response.Content.ReadAsStringAsync();
+
+        var result = JsonSerializer.Deserialize<GetCommentsResponse>(
+            json,
+            new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+        Assert.NotNull(result);
+
+        Assert.Equal(1, result.Page);
+        Assert.Equal(2, result.PageSize);
+        Assert.Equal(3, result.TotalCount);
+        Assert.Equal(2, result.TotalPages);
+        Assert.False(result.HasPreviousPage);
+        Assert.True(result.HasNextPage);
+
+        Assert.Equal(2, result.Items.Count);
+
+        Assert.Equal(newestComment.Id, result.Items[0].Id);
+        Assert.Equal(newestComment.UserName, result.Items[0].UserName);
+        Assert.Equal(newestComment.Email, result.Items[0].Email);
+        Assert.Equal(newestComment.Message, result.Items[0].Message);
+
+        Assert.Equal(middleComment.Id, result.Items[1].Id);
+        Assert.Equal(middleComment.UserName, result.Items[1].UserName);
+        Assert.Equal(middleComment.Email, result.Items[1].Email);
+        Assert.Equal(middleComment.Message, result.Items[1].Message);
+
+        Assert.DoesNotContain(
+            result.Items,
+            comment => comment.Id == oldestComment.Id);
+    }
+
+    [Fact]
+    public async Task GetComments_WithUserNameAndEmailSorting_ReturnsRequestedOrder()
+    {
+        await ClearCommentsAsync();
+
+        var charlie = CreateComment(
+            userName: "Charlie",
+            email: "a@example.com",
+            homePage: null,
+            message: "Third by name",
+            parentCommentId: null);
+        var alice = CreateComment(
+            userName: "Alice",
+            email: "c@example.com",
+            homePage: null,
+            message: "First by name",
+            parentCommentId: null);
+        var bob = CreateComment(
+            userName: "Bob",
+            email: "b@example.com",
+            homePage: null,
+            message: "Second by name",
+            parentCommentId: null);
+
+        await SeedCommentsAsync(charlie, alice, bob);
+
+        var userNameResponse = await _client.GetFromJsonAsync<GetCommentsResponse>(
+            "/api/comments?page=1&pageSize=25&sortBy=UserName&sortDirection=Ascending");
+        var emailResponse = await _client.GetFromJsonAsync<GetCommentsResponse>(
+            "/api/comments?page=1&pageSize=25&sortBy=Email&sortDirection=Descending");
+
+        Assert.NotNull(userNameResponse);
+        Assert.Equal(
+            new[] { alice.Id, bob.Id, charlie.Id },
+            userNameResponse.Items.Select(comment => comment.Id));
+
+        Assert.NotNull(emailResponse);
+        Assert.Equal(
+            new[] { alice.Id, bob.Id, charlie.Id },
+            emailResponse.Items.Select(comment => comment.Id));
+    }
+
+    [Fact]
+    public async Task GetComments_WithReplies_ReturnsNestedReplyTree()
+    {
+        await ClearCommentsAsync();
+
+        var parentComment = CreateComment(
+            userName: "Parent1",
+            email: "parent@example.com",
+            homePage: null,
+            message: "Parent comment",
+            parentCommentId: null);
+        var secondTopLevelComment = CreateComment(
+            userName: "Parent2",
+            email: "second@example.com",
+            homePage: null,
+            message: "Second top-level comment",
+            parentCommentId: null);
+        var reply = CreateComment(
+            userName: "Reply1",
+            email: "reply@example.com",
+            homePage: null,
+            message: "Reply",
+            parentCommentId: parentComment.Id);
+        var nestedReply = CreateComment(
+            userName: "Nested1",
+            email: "nested@example.com",
+            homePage: null,
+            message: "Nested reply",
+            parentCommentId: reply.Id);
+
+        await SeedCommentsAsync(
+            parentComment,
+            secondTopLevelComment,
+            reply,
+            nestedReply);
+
+        var response = await _client.GetAsync(
+            "/api/comments?page=1&pageSize=10");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var result = await response.Content
+            .ReadFromJsonAsync<GetCommentsResponse>();
+
+        Assert.NotNull(result);
+        Assert.Equal(2, result.TotalCount);
+        Assert.Equal(2, result.Items.Count);
+        Assert.Contains(
+            result.Items,
+            comment => comment.Id == parentComment.Id);
+        Assert.Contains(
+            result.Items,
+            comment => comment.Id == secondTopLevelComment.Id);
+        Assert.DoesNotContain(
+            result.Items,
+            comment => comment.Id == reply.Id);
+        var returnedParent = Assert.Single(
+            result.Items,
+            comment => comment.Id == parentComment.Id);
+        var returnedReply = Assert.Single(returnedParent.Replies);
+        Assert.Equal(reply.Id, returnedReply.Id);
+        Assert.Equal(nestedReply.Id, Assert.Single(returnedReply.Replies).Id);
+    }
+
+    [Fact]
+    public async Task GetComments_WithSecondPage_ReturnsCorrectItemsAndNavigationMetadata()
+    {
+        await ClearCommentsAsync();
+
+        var baseCreatedAt = new DateTimeOffset(
+            2026, 2, 1, 10, 0, 0, TimeSpan.Zero);
+        var comments = Enumerable.Range(1, 5)
+            .Select(index => CreateComment(
+                userName: $"User{index}",
+                email: $"user{index}@example.com",
+                homePage: null,
+                message: $"Comment {index}",
+                parentCommentId: null,
+                createdAt: baseCreatedAt.AddMinutes(index)))
+            .ToArray();
+
+        await SeedCommentsAsync(comments);
+
+        var response = await _client.GetAsync(
+            "/api/comments?page=2&pageSize=2&sortBy=CreatedAt&sortDirection=Descending");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var result = await response.Content
+            .ReadFromJsonAsync<GetCommentsResponse>();
+
+        Assert.NotNull(result);
+        Assert.Equal(2, result.Page);
+        Assert.Equal(2, result.PageSize);
+        Assert.Equal(5, result.TotalCount);
+        Assert.Equal(3, result.TotalPages);
+        Assert.True(result.HasPreviousPage);
+        Assert.True(result.HasNextPage);
+        Assert.Collection(
+            result.Items,
+            comment => Assert.Equal(comments[2].Id, comment.Id),
+            comment => Assert.Equal(comments[1].Id, comment.Id));
+    }
+
+    [Fact]
+    public async Task GetComments_WithAscendingSort_ReturnsOldestCommentsFirst()
+    {
+        await ClearCommentsAsync();
+
+        var oldestCreatedAt = new DateTimeOffset(
+            2026, 3, 1, 10, 0, 0, TimeSpan.Zero);
+        var oldestComment = CreateComment(
+            userName: "Oldest1",
+            email: "oldest@example.com",
+            homePage: null,
+            message: "Oldest comment",
+            parentCommentId: null,
+            createdAt: oldestCreatedAt);
+        var middleComment = CreateComment(
+            userName: "Middle1",
+            email: "middle@example.com",
+            homePage: null,
+            message: "Middle comment",
+            parentCommentId: null,
+            createdAt: oldestCreatedAt.AddMinutes(1));
+        var newestComment = CreateComment(
+            userName: "Newest1",
+            email: "newest@example.com",
+            homePage: null,
+            message: "Newest comment",
+            parentCommentId: null,
+            createdAt: oldestCreatedAt.AddMinutes(2));
+
+        await SeedCommentsAsync(
+            oldestComment,
+            middleComment,
+            newestComment);
+
+        var response = await _client.GetAsync(
+            "/api/comments?page=1&pageSize=3&sortBy=CreatedAt&sortDirection=Ascending");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var result = await response.Content
+            .ReadFromJsonAsync<GetCommentsResponse>();
+
+        Assert.NotNull(result);
+        Assert.False(result.HasPreviousPage);
+        Assert.False(result.HasNextPage);
+        Assert.Collection(
+            result.Items,
+            comment => Assert.Equal(oldestComment.Id, comment.Id),
+            comment => Assert.Equal(middleComment.Id, comment.Id),
+            comment => Assert.Equal(newestComment.Id, comment.Id));
+    }
+
+    private async Task SeedCommentsAsync(params Comment[] comments)
+    {
+        using var scope = _factory.Services.CreateScope();
+
+        var dbContext = scope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
+
+        dbContext.Comments.AddRange(comments);
+
+        await dbContext.SaveChangesAsync();
+    }
+
+    private static Comment CreateComment(
+        string userName,
+        string email,
+        string? homePage,
+        string message,
+        Guid? parentCommentId,
+        DateTimeOffset? createdAt = null)
+    {
+        return Comment.Create(
+            userName,
+            email,
+            homePage,
+            message,
+            parentCommentId,
+            createdAt ?? SeedCreatedAt);
+    }
+
+    private async Task ClearCommentsAsync()
+    {
+        using var scope = _factory.Services.CreateScope();
+
+        var dbContext = scope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
+
+        await dbContext.Comments
+            .Where(comment => comment.ParentCommentId != null)
+            .ExecuteDeleteAsync();
+        await dbContext.Comments.ExecuteDeleteAsync();
+
+        var commentsQueryCache = scope.ServiceProvider
+            .GetRequiredService<ICommentsQueryCache>();
+
+        await commentsQueryCache.InvalidateAsync(
+            CancellationToken.None);
+    }
+
+}

@@ -67,19 +67,35 @@ public static class DependencyInjection
             .ValidateOnStart();
 
         services.AddSingleton<IFileStorage, LocalFileStorage>();
-        services.AddMemoryCache();
+
+        var commentsCacheSection = configuration.GetSection(
+            CommentsCacheOptions.SectionName);
+
+        var commentsCacheOptions =
+            commentsCacheSection.Get<CommentsCacheOptions>() ?? new();
 
         services.AddOptions<CommentsCacheOptions>()
-            .Bind(configuration.GetSection(
-                CommentsCacheOptions.SectionName))
+            .Bind(commentsCacheSection)
             .Validate(
-                options => options.DurationSeconds > 0,
-                "Comments cache duration must be greater than zero.")
+                options =>
+                    !options.Enabled ||
+                    options.DurationSeconds > 0,
+                "Comments cache duration must be greater than zero when caching is enabled.")
             .ValidateOnStart();
 
-        services.AddSingleton<
-            ICommentsQueryCache,
-            MemoryCommentsQueryCache>();
+        if (commentsCacheOptions.Enabled)
+        {
+            services.AddMemoryCache();
+            services.AddSingleton<
+                ICommentsQueryCache,
+                MemoryCommentsQueryCache>();
+        }
+        else
+        {
+            services.AddSingleton<
+                ICommentsQueryCache,
+                NoOpCommentsQueryCache>();
+        }
 
         return services;
     }

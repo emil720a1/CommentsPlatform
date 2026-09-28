@@ -5,7 +5,7 @@ namespace CommentsPlatform.Application.Features.Attachments.Upload;
 public sealed class UploadAttachmentCommandValidator
     : AbstractValidator<UploadAttachmentCommand>
 {
-    private const long MaxFileSizeBytes = 5 * 1024 * 1024;
+    private const long MaxFileSizeBytes = 100 * 1024;
 
     private static readonly HashSet<string> AllowedContentTypes =
         new(StringComparer.OrdinalIgnoreCase)
@@ -51,7 +51,7 @@ public sealed class UploadAttachmentCommandValidator
             .GreaterThan(0)
             .WithErrorCode("Attachments.FileSize.Empty")
             .LessThanOrEqualTo(MaxFileSizeBytes)
-            .WithMessage("The attachment must not exceed 5 MiB.")
+            .WithMessage("The attachment must not exceed 100 KB.")
             .WithErrorCode("Attachments.FileSize.TooLarge");
     }
 

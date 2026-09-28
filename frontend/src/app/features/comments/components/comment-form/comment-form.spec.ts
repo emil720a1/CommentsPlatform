@@ -326,7 +326,7 @@ describe('CommentForm', () => {
 
     expect(createdEvents).toHaveLength(1);
     expect(createdEvents[0].attachmentErrorMessage).toContain(
-      'Attachment перевищує максимальний розмір 5 MiB.',
+      'Attachment перевищує максимальний розмір 100 KB.',
     );
   });
 

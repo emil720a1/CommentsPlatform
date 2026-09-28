@@ -1,8 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using CommentsPlatform.Api.Contracts.Comments;
 using CommentsPlatform.Api.Contracts.Comments.GetComments;
 using CommentsPlatform.Api.IntegrationTests.Infrastructure;
+using CommentsPlatform.Application.Features.Comments.Queries.GetComments;
 using CommentsPlatform.Domain;
 using CommentsPlatform.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -46,6 +48,53 @@ public sealed class GetCommentsEndpointTests
         Assert.Equal(0, result.TotalPages);
         Assert.False(result.HasPreviousPage);
         Assert.False(result.HasNextPage);
+    }
+
+    [Fact]
+    public async Task GetComments_AfterCommentIsCreated_ReturnsFreshResult()
+    {
+        await ClearCommentsAsync();
+
+        const string requestUri =
+            "/api/comments?page=1&pageSize=25&sortBy=CreatedAt&sortDirection=Descending";
+
+        var initialResult = await _client
+            .GetFromJsonAsync<GetCommentsResponse>(requestUri);
+
+        Assert.NotNull(initialResult);
+        Assert.Empty(initialResult.Items);
+        Assert.Equal(0, initialResult.TotalCount);
+
+        var createRequest = new CreateCommentRequest(
+            "CacheUser",
+            "cache-user@example.com",
+            null,
+            "Cache invalidation integration test",
+            null,
+            FakeCaptchaValidator.ValidToken);
+
+        using var createResponse = await _client.PostAsJsonAsync(
+            "/api/comments",
+            createRequest);
+
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+
+        var createdComment = await createResponse.Content
+            .ReadFromJsonAsync<CreateCommentResponse>();
+
+        Assert.NotNull(createdComment);
+
+        var refreshedResult = await _client
+            .GetFromJsonAsync<GetCommentsResponse>(requestUri);
+
+        Assert.NotNull(refreshedResult);
+        Assert.Equal(1, refreshedResult.TotalCount);
+
+        var returnedComment = Assert.Single(refreshedResult.Items);
+        Assert.Equal(createdComment.Id, returnedComment.Id);
+        Assert.Equal(createRequest.UserName, returnedComment.UserName);
+        Assert.Equal(createRequest.Email, returnedComment.Email);
+        Assert.Equal(createRequest.Message, returnedComment.Message);
     }
 
     [Theory]
@@ -395,6 +444,12 @@ public sealed class GetCommentsEndpointTests
             .Where(comment => comment.ParentCommentId != null)
             .ExecuteDeleteAsync();
         await dbContext.Comments.ExecuteDeleteAsync();
+
+        var commentsQueryCache = scope.ServiceProvider
+            .GetRequiredService<ICommentsQueryCache>();
+
+        await commentsQueryCache.InvalidateAsync(
+            CancellationToken.None);
     }
 
 }

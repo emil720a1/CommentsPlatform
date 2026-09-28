@@ -1,7 +1,9 @@
 using CommentsPlatform.Application.Common.Abstractions.Persistence;
 using CommentsPlatform.Application.Common.Abstractions.Storage;
+using CommentsPlatform.Application.Features.Attachments.Events;
 using CommentsPlatform.Application.Features.Attachments.Upload;
 using CommentsPlatform.Domain;
+using MediatR;
 using Moq;
 
 namespace CommentsPlatform.Application.UnitTests.Features.Attachments.Upload;
@@ -14,6 +16,7 @@ public sealed class UploadAttachmentCommandHandlerTests
     private readonly Mock<ICommentRepository> _commentRepositoryMock = new();
     private readonly Mock<IFileStorage> _fileStorageMock = new();
     private readonly Mock<TimeProvider> _timeProviderMock = new();
+    private readonly Mock<IPublisher> _publisherMock = new();
     private readonly UploadAttachmentCommandHandler _handler;
 
     public UploadAttachmentCommandHandlerTests()
@@ -22,10 +25,17 @@ public sealed class UploadAttachmentCommandHandlerTests
             .Setup(timeProvider => timeProvider.GetUtcNow())
             .Returns(FixedUtcNow);
 
+        _publisherMock
+            .Setup(publisher => publisher.Publish(
+                It.IsAny<AttachmentUploadedEvent>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
         _handler = new UploadAttachmentCommandHandler(
             _commentRepositoryMock.Object,
             _fileStorageMock.Object,
-            _timeProviderMock.Object);
+            _timeProviderMock.Object,
+            _publisherMock.Object);
     }
 
     [Fact]
@@ -146,6 +156,14 @@ public sealed class UploadAttachmentCommandHandlerTests
         _timeProviderMock.Verify(
             timeProvider => timeProvider.GetUtcNow(),
             Times.Once);
+
+        _publisherMock.Verify(
+            publisher => publisher.Publish(
+                It.Is<AttachmentUploadedEvent>(eventData =>
+                    eventData.CommentId == comment.Id &&
+                    eventData.AttachmentId == result.Value),
+                cancellationToken),
+            Times.Once);
     }
 
     [Theory]
@@ -239,6 +257,12 @@ public sealed class UploadAttachmentCommandHandlerTests
         _timeProviderMock.Verify(
             timeProvider => timeProvider.GetUtcNow(),
             Times.Never);
+
+        _publisherMock.Verify(
+            publisher => publisher.Publish(
+                It.IsAny<AttachmentUploadedEvent>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
@@ -276,6 +300,12 @@ public sealed class UploadAttachmentCommandHandlerTests
                 savedStorageKey,
                 CancellationToken.None),
             Times.Once);
+
+        _publisherMock.Verify(
+            publisher => publisher.Publish(
+                It.IsAny<AttachmentUploadedEvent>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]

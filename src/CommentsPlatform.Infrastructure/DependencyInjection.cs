@@ -5,6 +5,8 @@ using CommentsPlatform.Infrastructure.Persistence;
 using CommentsPlatform.Infrastructure.Persistence.Repositories;
 using CommentsPlatform.Infrastructure.Security.CloudflareTurnstile;
 using CommentsPlatform.Infrastructure.Security.HtmlSanitization;
+using CommentsPlatform.Application.Features.Comments.Queries.GetComments;
+using CommentsPlatform.Infrastructure.Caching;
 using CommentsPlatform.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -65,6 +67,35 @@ public static class DependencyInjection
             .ValidateOnStart();
 
         services.AddSingleton<IFileStorage, LocalFileStorage>();
+
+        var commentsCacheSection = configuration.GetSection(
+            CommentsCacheOptions.SectionName);
+
+        var commentsCacheOptions =
+            commentsCacheSection.Get<CommentsCacheOptions>() ?? new();
+
+        services.AddOptions<CommentsCacheOptions>()
+            .Bind(commentsCacheSection)
+            .Validate(
+                options =>
+                    !options.Enabled ||
+                    options.DurationSeconds > 0,
+                "Comments cache duration must be greater than zero when caching is enabled.")
+            .ValidateOnStart();
+
+        if (commentsCacheOptions.Enabled)
+        {
+            services.AddMemoryCache();
+            services.AddSingleton<
+                ICommentsQueryCache,
+                MemoryCommentsQueryCache>();
+        }
+        else
+        {
+            services.AddSingleton<
+                ICommentsQueryCache,
+                NoOpCommentsQueryCache>();
+        }
 
         return services;
     }

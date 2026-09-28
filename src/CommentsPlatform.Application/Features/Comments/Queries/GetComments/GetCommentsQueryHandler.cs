@@ -10,10 +10,14 @@ public sealed class GetCommentsQueryHandler
         ErrorOr<PaginatedList<CommentDto>>>
 {
     private readonly ICommentRepository _commentRepository;
+    private readonly ICommentsQueryCache _commentsQueryCache;
 
-    public GetCommentsQueryHandler(ICommentRepository commentRepository)
+    public GetCommentsQueryHandler(
+        ICommentRepository commentRepository,
+        ICommentsQueryCache commentsQueryCache)
     {
         _commentRepository = commentRepository;
+        _commentsQueryCache = commentsQueryCache;
     }
 
     public async Task<ErrorOr<PaginatedList<CommentDto>>> Handle(
@@ -26,7 +30,23 @@ public sealed class GetCommentsQueryHandler
             request.SortBy,
             request.SortDirection);
 
-        var result = await _commentRepository.GetTopLevelCommentsAsync(parameters, cancellationToken);
+        var cachedResult = await _commentsQueryCache.GetAsync(
+            parameters,
+            cancellationToken);
+
+        if (cachedResult is not null)
+        {
+            return cachedResult;
+        }
+
+        var result = await _commentRepository.GetTopLevelCommentsAsync(
+            parameters,
+            cancellationToken);
+
+        await _commentsQueryCache.SetAsync(
+            parameters,
+            result,
+            cancellationToken);
 
         return result;
     }

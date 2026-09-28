@@ -1,5 +1,6 @@
 using CommentsPlatform.Application.Common.Abstractions.Persistence;
 using CommentsPlatform.Application.Common.Abstractions.Storage;
+using CommentsPlatform.Application.Features.Attachments.Events;
 using ErrorOr;
 using MediatR;
 
@@ -11,15 +12,18 @@ public sealed class UploadAttachmentCommandHandler
     private readonly ICommentRepository _commentRepository;
     private readonly IFileStorage _fileStorage;
     private readonly TimeProvider _timeProvider;
+    private readonly IPublisher _publisher;
 
     public UploadAttachmentCommandHandler(
         ICommentRepository commentRepository,
         IFileStorage fileStorage,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        IPublisher publisher)
     {
         _commentRepository = commentRepository;
         _fileStorage = fileStorage;
         _timeProvider = timeProvider;
+        _publisher = publisher;
     }
 
     public async Task<ErrorOr<Guid>> Handle(
@@ -60,6 +64,8 @@ public sealed class UploadAttachmentCommandHandler
             return UploadAttachmentErrors.StorageFailure;
         }
 
+        Guid attachmentId;
+
         try
         {
             var attachment = comment.AddAttachment(
@@ -72,7 +78,7 @@ public sealed class UploadAttachmentCommandHandler
             await _commentRepository.SaveChangesAsync(
                 cancellationToken);
 
-            return attachment.Id;
+            attachmentId = attachment.Id;
         }
         catch (OperationCanceledException)
             when (cancellationToken.IsCancellationRequested)
@@ -85,6 +91,14 @@ public sealed class UploadAttachmentCommandHandler
             await TryDeleteAsync(savedStorageKey);
             return UploadAttachmentErrors.PersistenceFailure;
         }
+
+        await _publisher.Publish(
+            new AttachmentUploadedEvent(
+                comment.Id,
+                attachmentId),
+            cancellationToken);
+
+        return attachmentId;
     }
 
     private async Task TryDeleteAsync(string storageKey)

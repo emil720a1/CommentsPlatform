@@ -1,0 +1,25 @@
+{
+  "name": "CommentsPlatform",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "moby": false
+    },
+    "ghcr.io/devcontainers/features/dotnet:2": {
+      "version": "10.0"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22"
+    }
+  },
+  "forwardPorts": [4200],
+  "portsAttributes": {
+    "4200": {
+      "label": "CommentsPlatform",
+      "onAutoForward": "openBrowser",
+      "visibility": "public"
+    }
+  },
+  "postCreateCommand": "if [ ! -f .env ]; then cp .env.example .env && sed -i 's/^MSSQL_SA_PASSWORD=.*/MSSQL_SA_PASSWORD=LocalPassword123!/' .env; fi"
+}

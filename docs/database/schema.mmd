@@ -1,0 +1,25 @@
+erDiagram
+    Comments {
+        uuid Id PK
+        varchar UserName
+        varchar Email
+        varchar HomePage
+        text Message
+        datetimeoffset CreatedAt
+        uuid ParentCommentId FK
+    }
+
+    Attachments {
+        uuid Id PK
+        uuid CommentId FK
+        varchar StorageKey
+        varchar OriginalFileName
+        varchar ContentType
+        bigint FileSizeBytes
+        int Width
+        int Height
+        datetimeoffset CreatedAt
+    }
+
+    Comments ||--o{ Comments : replies
+    Comments ||--o{ Attachments : contains

@@ -56,19 +56,10 @@ h1 {
 app-comments-list,
 .page-notice,
 .page-state,
-.reply-composer,
 .results-summary,
 .pagination {
   inline-size: min(100%, 60rem);
   margin-inline: auto;
-}
-
-.reply-composer {
-  --comment-form-margin: var(--space-3) 0;
-  --comment-form-padding: var(--space-4);
-  --comment-form-shadow: none;
-  border-inline-start: 3px solid var(--accent);
-  padding-inline-start: var(--space-4);
 }
 
 .page-notice,
@@ -167,11 +158,6 @@ app-comments-list,
 
   .sorting select + label {
     margin-block-start: var(--space-2);
-  }
-
-  .reply-composer {
-    border-inline-start-width: 2px;
-    padding-inline-start: var(--space-2);
   }
 
   .pagination {

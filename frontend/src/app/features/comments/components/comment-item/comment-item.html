@@ -37,10 +37,27 @@
     <button class="reply-button" type="button" (click)="requestReply()">Відповісти</button>
   </div>
 
+  @if (replyingTo()?.id === comment().id) {
+    <section class="reply-composer" [attr.aria-label]="'Форма відповіді для ' + comment().userName">
+      <app-comment-form
+        [parentCommentId]="comment().id"
+        [replyToUserName]="comment().userName"
+        (commentCreated)="commentCreated.emit($event)"
+        (replyCancelled)="replyCancelled.emit()"
+      />
+    </section>
+  }
+
   @if (comment().replies.length > 0) {
     <section class="replies" aria-label="Відповіді">
       @for (reply of comment().replies; track reply.id) {
-        <app-comment-item [comment]="reply" (replyRequested)="replyRequested.emit($event)" />
+        <app-comment-item
+          [comment]="reply"
+          [replyingTo]="replyingTo()"
+          (replyRequested)="replyRequested.emit($event)"
+          (commentCreated)="commentCreated.emit($event)"
+          (replyCancelled)="replyCancelled.emit()"
+        />
       }
     </section>
   }

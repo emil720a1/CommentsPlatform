@@ -22,7 +22,7 @@ The backend is implemented as an ASP.NET Core Web API. The frontend is implement
 - xUnit
 - SonarCloud
 
-## Planned Features
+## Features
 
 - create comments;
 - reply to existing comments;
@@ -79,7 +79,7 @@ The Application layer does not depend on API or Infrastructure implementations.
 
 ## Project Status
 
-The project is currently under development.
+The project is runnable locally as a full stack through Docker Compose.
 
 ### Completed
 
@@ -96,14 +96,23 @@ The project is currently under development.
 - local SQL Server Docker Compose configuration;
 - backend unit and integration test projects;
 - SQL Server Testcontainers integration testing.
+- repository implementations and API endpoints;
+- Angular comments UI with nested replies, sorting and pagination;
+- HTML formatting with server-side sanitization;
+- image and text attachments with preview and lightbox support;
+- frontend and backend automated tests with CI validation;
+- application events and configurable comments-query caching;
+- production frontend build served by nginx in Docker Compose.
 
-### Planned
+## Database schema
 
-- initial database migration verification;
-- repository implementations;
-- API endpoints;
-- Angular frontend;
-- CI and SonarCloud analysis.
+The source-of-truth schema is the committed EF Core migration in
+`src/CommentsPlatform.Infrastructure/Persistence/Migrations`.
+
+For architecture review and database-tool inspection, a SQL Server-compatible
+reference schema is available at [docs/database-schema.sql](docs/database-schema.sql).
+It describes the `Comments` and `Attachments` tables, their relationships, and
+the indexes used for nested comments and attachment lookups.
 
 ## Testing
 
@@ -313,7 +322,9 @@ The default verification URL and non-sensitive settings are defined in `src/Comm
 
 API integration tests replace the real `ICaptchaValidator` implementation with a deterministic fake. Tests never call the external Cloudflare service.
 
-The client-side CAPTCHA widget will be implemented separately as part of the frontend scope.
+The client-side CAPTCHA widget is included in the Angular frontend. Local Docker
+development uses Cloudflare's provider-approved test credentials; production
+must use a real site key and secret.
 
 ## Local SQL Server
 

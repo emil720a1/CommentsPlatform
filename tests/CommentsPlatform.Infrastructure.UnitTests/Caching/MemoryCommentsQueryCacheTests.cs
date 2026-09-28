@@ -2,6 +2,7 @@ using CommentsPlatform.Application.Common.Models;
 using CommentsPlatform.Application.Features.Comments.Queries.GetComments;
 using CommentsPlatform.Infrastructure.Caching;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Internal;
 using Microsoft.Extensions.Options;
 
 namespace CommentsPlatform.Infrastructure.UnitTests.Caching;
@@ -155,7 +156,11 @@ public sealed class MemoryCommentsQueryCacheTests
     public async Task GetAsync_AfterAbsoluteExpiration_ReturnsNull()
     {
         // Arrange
-        using var memoryCache = new MemoryCache(new MemoryCacheOptions());
+        var clock = new TestSystemClock(DateTimeOffset.UtcNow);
+        using var memoryCache = new MemoryCache(new MemoryCacheOptions
+        {
+            Clock = clock,
+        });
         using var cache = CreateCache(memoryCache, durationSeconds: 1);
         var parameters = CreateParameters();
 
@@ -165,7 +170,7 @@ public sealed class MemoryCommentsQueryCacheTests
             CancellationToken.None);
 
         // Act
-        await Task.Delay(TimeSpan.FromMilliseconds(1_100));
+        clock.Advance(TimeSpan.FromSeconds(2));
 
         var result = await cache.GetAsync(
             parameters,
@@ -216,5 +221,16 @@ public sealed class MemoryCommentsQueryCacheTests
             page: 1,
             pageSize: 25,
             totalCount: 1);
+    }
+
+    private sealed class TestSystemClock(
+        DateTimeOffset utcNow) : ISystemClock
+    {
+        public DateTimeOffset UtcNow { get; private set; } = utcNow;
+
+        public void Advance(TimeSpan duration)
+        {
+            UtcNow = UtcNow.Add(duration);
+        }
     }
 }

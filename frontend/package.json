@@ -5,8 +5,11 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "build:ci": "ng build --configuration production",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "test:ci": "ng test --watch=false",
+    "format:check": "prettier --check \"src/**/*.{ts,html,scss}\""
   },
   "private": true,
   "packageManager": "pnpm@11.19.0",

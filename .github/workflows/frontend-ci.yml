@@ -1,0 +1,57 @@
+name: Frontend CI
+
+on:
+  pull_request:
+    branches:
+      - dev
+  push:
+    branches:
+      - dev
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Format, test, and build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 11.19.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check formatting
+        run: pnpm run format:check
+
+      - name: Run unit tests
+        run: pnpm run test:ci
+
+      - name: Build production bundle
+        run: pnpm run build:ci

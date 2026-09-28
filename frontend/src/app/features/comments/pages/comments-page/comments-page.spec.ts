@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { of, Subject, throwError } from 'rxjs';
@@ -292,6 +293,42 @@ describe('CommentsPage', () => {
     expect(fixture.nativeElement.textContent).toContain('Спробувати ще раз');
   });
 
+  it('retries loading comments when the retry button is clicked', async () => {
+    commentsApi.getComments.mockReturnValueOnce(
+      throwError(() => new HttpErrorResponse({ status: 500 })),
+    );
+
+    await router.navigate([], { queryParams: { page: 2 } });
+    fixture.detectChanges();
+
+    commentsApi.getComments.mockReturnValueOnce(of(commentsResponse));
+
+    const retryButton = Array.from(
+      fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
+    ).find((b) => b.textContent?.includes('Спробувати ще раз'));
+    retryButton?.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Alice1');
+  });
+
+  it('shows a network error message when the API is unreachable', async () => {
+    commentsApi.getComments.mockReturnValueOnce(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 0,
+            error: new ProgressEvent('error'),
+          }),
+      ),
+    );
+
+    await router.navigate([], { queryParams: { page: 2 } });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Не вдалося підключитися до API.');
+  });
+
   it('renders allowed message markup without inserting unsafe script elements', async () => {
     commentsApi.getComments.mockReturnValueOnce(
       of({
@@ -366,6 +403,52 @@ describe('CommentsPage', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Відповідь для Nested1');
+  });
+
+  it('displays the total comment count in the page header', () => {
+    expect(fixture.nativeElement.textContent).toContain('Усього: 60');
+  });
+
+  it('displays a page summary with the current page and total pages', () => {
+    expect(fixture.nativeElement.textContent).toContain('Сторінка 1 із 3. Усього коментарів: 60.');
+  });
+
+  it('shows loading state during a sort field change', async () => {
+    const pendingResponse = new Subject<GetCommentsResponse>();
+    commentsApi.getComments.mockReturnValue(pendingResponse);
+
+    changeSelect('comment-sort-field', 'Email');
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Завантаження коментарів...');
+
+    pendingResponse.next(commentsResponse);
+    pendingResponse.complete();
+  });
+
+  it('shows the API error detail from the error response when loading fails', async () => {
+    commentsApi.getComments.mockReturnValueOnce(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 422,
+            error: { detail: 'Page number out of range' },
+          }),
+      ),
+    );
+
+    await router.navigate([], { queryParams: { page: 999 } });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Page number out of range');
+  });
+
+  it('falls back to a default page of 1 for non-numeric page values', async () => {
+    await router.navigateByUrl('/?page=abc');
+    await fixture.whenStable();
+
+    expect(commentsApi.getComments).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1 }));
   });
 
   function getButton(label: string): HTMLButtonElement {

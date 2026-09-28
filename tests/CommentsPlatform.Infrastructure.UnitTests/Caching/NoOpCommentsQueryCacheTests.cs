@@ -38,7 +38,10 @@ public sealed class NoOpCommentsQueryCacheTests
     [Fact]
     public async Task InvalidateAsync_Always_CompletesSuccessfully()
     {
-        await _cache.InvalidateAsync(CancellationToken.None);
+        var exception = await Record.ExceptionAsync(
+            () => _cache.InvalidateAsync(CancellationToken.None));
+
+        Assert.Null(exception);
     }
 
     private static GetCommentsParameters CreateParameters()

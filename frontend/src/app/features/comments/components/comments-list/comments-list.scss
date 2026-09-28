@@ -5,8 +5,10 @@
 .comments-list {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-subtle);
   display: grid;
+  overflow: hidden;
 }
 
 .comments-list > app-comment-item:last-child {

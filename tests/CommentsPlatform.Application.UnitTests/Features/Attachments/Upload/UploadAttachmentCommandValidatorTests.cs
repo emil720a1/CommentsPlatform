@@ -4,7 +4,7 @@ namespace CommentsPlatform.Application.UnitTests.Features.Attachments.Upload;
 
 public sealed class UploadAttachmentCommandValidatorTests
 {
-    private const long MaxFileSizeBytes = 5 * 1024 * 1024;
+    private const long MaxFileSizeBytes = 100 * 1024;
 
     private readonly UploadAttachmentCommandValidator _validator = new();
 

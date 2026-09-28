@@ -11,7 +11,7 @@ import {
 } from '../../validators/comment-form.validators';
 import { TurnstileWidget } from '../turnstile-widget/turnstile-widget';
 
-const MAX_ATTACHMENT_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_ATTACHMENT_SIZE_BYTES = 100 * 1024;
 
 const ALLOWED_ATTACHMENT_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'text/plain']);
 
@@ -35,7 +35,7 @@ const API_ERROR_MESSAGES: Record<string, string> = {
   'Attachments.ContentType.Required': 'Не вдалося визначити тип attachment.',
   'Attachments.ContentType.Unsupported': 'Тип attachment не підтримується.',
   'Attachments.FileSize.Empty': 'Attachment не може бути порожнім.',
-  'Attachments.FileSize.TooLarge': 'Attachment перевищує максимальний розмір 5 MiB.',
+  'Attachments.FileSize.TooLarge': 'Attachment перевищує максимальний розмір 100 KB.',
   'Attachments.CommentNotFound': 'Коментар створено, але його не знайдено для attachment.',
 };
 
@@ -166,7 +166,7 @@ export class CommentForm {
     }
 
     if (file.size > MAX_ATTACHMENT_SIZE_BYTES) {
-      this.rejectFile(inputElement, 'Розмір файлу не може перевищувати 5 MiB.');
+      this.rejectFile(inputElement, 'Розмір файлу не може перевищувати 100 KB.');
       return;
     }
 

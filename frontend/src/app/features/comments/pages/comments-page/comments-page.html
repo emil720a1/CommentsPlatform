@@ -47,18 +47,13 @@
     @if (page.items.length === 0) {
       <p class="page-state">Коментарів поки немає. Будьте першим, хто залишить коментар.</p>
     } @else {
-      <app-comments-list [comments]="page.items" (replyRequested)="startReply($event)" />
-
-      @if (replyingTo(); as reply) {
-        <section class="reply-composer" [attr.aria-label]="'Форма відповіді для ' + reply.userName">
-          <app-comment-form
-            [parentCommentId]="reply.id"
-            [replyToUserName]="reply.userName"
-            (commentCreated)="onCommentCreated($event)"
-            (replyCancelled)="cancelReply()"
-          />
-        </section>
-      }
+      <app-comments-list
+        [comments]="page.items"
+        [replyingTo]="replyingTo()"
+        (replyRequested)="startReply($event)"
+        (commentCreated)="onCommentCreated($event)"
+        (replyCancelled)="cancelReply()"
+      />
 
       <p class="results-summary" aria-live="polite">
         Сторінка {{ page.page }} із {{ page.totalPages }}. Усього коментарів: {{ page.totalCount }}.

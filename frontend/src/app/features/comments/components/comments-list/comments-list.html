@@ -1,5 +1,11 @@
 <section class="comments-list" aria-label="Список коментарів">
   @for (comment of comments(); track comment.id) {
-    <app-comment-item [comment]="comment" (replyRequested)="replyRequested.emit($event)" />
+    <app-comment-item
+      [comment]="comment"
+      [replyingTo]="replyingTo()"
+      (replyRequested)="replyRequested.emit($event)"
+      (commentCreated)="commentCreated.emit($event)"
+      (replyCancelled)="replyCancelled.emit()"
+    />
   }
 </section>

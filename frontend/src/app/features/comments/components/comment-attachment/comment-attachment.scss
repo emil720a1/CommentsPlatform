@@ -1,22 +1,22 @@
 .attachment {
   background: var(--color-surface-muted);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   display: grid;
   gap: var(--space-2);
   justify-items: start;
   margin-block: var(--space-2) var(--space-3);
   max-inline-size: 34rem;
   min-inline-size: 0;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2);
 }
 
 img {
   block-size: auto;
   border-radius: var(--radius-sm);
   display: block;
-  max-block-size: 18rem;
-  max-inline-size: 100%;
+  max-block-size: 240px;
+  max-inline-size: 320px;
   object-fit: contain;
 }
 
@@ -40,6 +40,7 @@ img {
 }
 
 a {
+  padding-inline: var(--space-2);
   font-weight: 650;
   max-inline-size: 100%;
   overflow-wrap: anywhere;

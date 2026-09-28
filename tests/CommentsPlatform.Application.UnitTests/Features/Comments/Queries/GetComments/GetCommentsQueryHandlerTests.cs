@@ -21,12 +21,13 @@ public sealed class GetCommentsQueryHandlerTests
             .Setup(cache => cache.GetAsync(
                 It.IsAny<GetCommentsParameters>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync((PaginatedList<CommentDto>?)null);
+            .ReturnsAsync(new CommentsQueryCacheSnapshot(null, 0));
 
         _commentsQueryCacheMock
             .Setup(cache => cache.SetAsync(
                 It.IsAny<GetCommentsParameters>(),
                 It.IsAny<PaginatedList<CommentDto>>(),
+                It.IsAny<long>(),
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
@@ -63,7 +64,7 @@ public sealed class GetCommentsQueryHandlerTests
                     parameters.SortBy == query.SortBy &&
                     parameters.SortDirection == query.SortDirection),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(cachedResult);
+            .ReturnsAsync(new CommentsQueryCacheSnapshot(cachedResult, 0));
 
         // Act
         var result = await _handler.Handle(query, CancellationToken.None);
@@ -82,6 +83,7 @@ public sealed class GetCommentsQueryHandlerTests
             cache => cache.SetAsync(
                 It.IsAny<GetCommentsParameters>(),
                 It.IsAny<PaginatedList<CommentDto>>(),
+                It.IsAny<long>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -150,6 +152,7 @@ public sealed class GetCommentsQueryHandlerTests
                     parameters.SortBy == query.SortBy &&
                     parameters.SortDirection == query.SortDirection),
                 repositoryResult,
+                It.IsAny<long>(),
                 cancellationToken),
             Times.Once);
     }

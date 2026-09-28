@@ -22,6 +22,7 @@ public sealed class MemoryCommentsQueryCacheTests
         await cache.SetAsync(
             parameters,
             expectedResult,
+            0,
             CancellationToken.None);
 
         var result = await cache.GetAsync(
@@ -29,7 +30,7 @@ public sealed class MemoryCommentsQueryCacheTests
             CancellationToken.None);
 
         // Assert
-        Assert.Same(expectedResult, result);
+        Assert.Same(expectedResult, result.Result);
     }
 
     [Theory]
@@ -61,11 +62,13 @@ public sealed class MemoryCommentsQueryCacheTests
         await cache.SetAsync(
             originalParameters,
             originalResult,
+            0,
             CancellationToken.None);
 
         await cache.SetAsync(
             differentParameters,
             differentResult,
+            0,
             CancellationToken.None);
 
         var cachedOriginalResult = await cache.GetAsync(
@@ -77,8 +80,8 @@ public sealed class MemoryCommentsQueryCacheTests
             CancellationToken.None);
 
         // Assert
-        Assert.Same(originalResult, cachedOriginalResult);
-        Assert.Same(differentResult, cachedDifferentResult);
+        Assert.Same(originalResult, cachedOriginalResult.Result);
+        Assert.Same(differentResult, cachedDifferentResult.Result);
     }
 
     [Fact]
@@ -98,11 +101,13 @@ public sealed class MemoryCommentsQueryCacheTests
         await cache.SetAsync(
             firstParameters,
             CreateResult("first-user"),
+            0,
             CancellationToken.None);
 
         await cache.SetAsync(
             secondParameters,
             CreateResult("second-user"),
+            0,
             CancellationToken.None);
 
         // Act
@@ -117,8 +122,8 @@ public sealed class MemoryCommentsQueryCacheTests
             CancellationToken.None);
 
         // Assert
-        Assert.Null(firstResult);
-        Assert.Null(secondResult);
+        Assert.Null(firstResult.Result);
+        Assert.Null(secondResult.Result);
     }
 
     [Fact]
@@ -132,6 +137,7 @@ public sealed class MemoryCommentsQueryCacheTests
         await cache.SetAsync(
             parameters,
             CreateResult("old-user"),
+            0,
             CancellationToken.None);
 
         await cache.InvalidateAsync(CancellationToken.None);
@@ -142,6 +148,7 @@ public sealed class MemoryCommentsQueryCacheTests
         await cache.SetAsync(
             parameters,
             expectedResult,
+            1,
             CancellationToken.None);
 
         var result = await cache.GetAsync(
@@ -149,7 +156,35 @@ public sealed class MemoryCommentsQueryCacheTests
             CancellationToken.None);
 
         // Assert
-        Assert.Same(expectedResult, result);
+        Assert.Same(expectedResult, result.Result);
+    }
+
+    [Fact]
+    public async Task SetAsync_WithStaleVersion_DoesNotRepopulateInvalidatedCache()
+    {
+        // Arrange
+        using var memoryCache = new MemoryCache(new MemoryCacheOptions());
+        using var cache = CreateCache(memoryCache);
+        var parameters = CreateParameters();
+        var staleSnapshot = await cache.GetAsync(
+            parameters,
+            CancellationToken.None);
+
+        await cache.InvalidateAsync(CancellationToken.None);
+
+        // Act
+        await cache.SetAsync(
+            parameters,
+            CreateResult("stale-user"),
+            staleSnapshot.Version,
+            CancellationToken.None);
+
+        var result = await cache.GetAsync(
+            parameters,
+            CancellationToken.None);
+
+        // Assert
+        Assert.Null(result.Result);
     }
 
     [Fact]
@@ -167,6 +202,7 @@ public sealed class MemoryCommentsQueryCacheTests
         await cache.SetAsync(
             parameters,
             CreateResult("expired-user"),
+            0,
             CancellationToken.None);
 
         // Act
@@ -177,7 +213,7 @@ public sealed class MemoryCommentsQueryCacheTests
             CancellationToken.None);
 
         // Assert
-        Assert.Null(result);
+        Assert.Null(result.Result);
     }
 
     private static MemoryCommentsQueryCache CreateCache(

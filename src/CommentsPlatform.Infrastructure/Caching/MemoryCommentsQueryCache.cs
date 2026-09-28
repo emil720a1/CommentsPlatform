@@ -16,6 +16,7 @@ public sealed class MemoryCommentsQueryCache
     private readonly object _invalidationLock = new();
 
     private CancellationTokenSource _invalidationTokenSource = new();
+    private long _invalidationVersion;
 
     public MemoryCommentsQueryCache(
         IMemoryCache memoryCache,
@@ -26,7 +27,7 @@ public sealed class MemoryCommentsQueryCache
             options.Value.DurationSeconds);
     }
 
-    public Task<PaginatedList<CommentDto>?> GetAsync(
+    public Task<CommentsQueryCacheSnapshot> GetAsync(
         GetCommentsParameters parameters,
         CancellationToken cancellationToken)
     {
@@ -34,15 +35,22 @@ public sealed class MemoryCommentsQueryCache
 
         var cacheKey = CreateCacheKey(parameters);
 
-        var result = _memoryCache.Get<
-            PaginatedList<CommentDto>>(cacheKey);
+        CommentsQueryCacheSnapshot snapshot;
 
-        return Task.FromResult(result);
+        lock (_invalidationLock)
+        {
+            snapshot = new CommentsQueryCacheSnapshot(
+                _memoryCache.Get<PaginatedList<CommentDto>>(cacheKey),
+                _invalidationVersion);
+        }
+
+        return Task.FromResult(snapshot);
     }
 
     public Task SetAsync(
         GetCommentsParameters parameters,
         PaginatedList<CommentDto> result,
+        long version,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -51,6 +59,11 @@ public sealed class MemoryCommentsQueryCache
 
         lock (_invalidationLock)
         {
+            if (version != _invalidationVersion)
+            {
+                return Task.CompletedTask;
+            }
+
             invalidationToken = new CancellationChangeToken(
                 _invalidationTokenSource.Token);
         }
@@ -78,6 +91,7 @@ public sealed class MemoryCommentsQueryCache
         {
             previousTokenSource = _invalidationTokenSource;
             _invalidationTokenSource = new CancellationTokenSource();
+            _invalidationVersion++;
         }
 
         previousTokenSource.Cancel();

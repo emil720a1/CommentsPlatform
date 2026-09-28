@@ -5,18 +5,19 @@ namespace CommentsPlatform.Infrastructure.Caching;
 
 public sealed class NoOpCommentsQueryCache : ICommentsQueryCache
 {
-    public Task<PaginatedList<CommentDto>?> GetAsync(
+    public Task<CommentsQueryCacheSnapshot> GetAsync(
         GetCommentsParameters parameters,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        return Task.FromResult<PaginatedList<CommentDto>?>(null);
+        return Task.FromResult(new CommentsQueryCacheSnapshot(null, 0));
     }
 
     public Task SetAsync(
         GetCommentsParameters parameters,
         PaginatedList<CommentDto> result,
+        long version,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();

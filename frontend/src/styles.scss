@@ -1,17 +1,17 @@
 :root {
   color-scheme: light;
-  --page-bg: #f5f7fb;
+  --page-bg: #f6f7fb;
   --surface: #ffffff;
   --surface-soft: #f8f9fd;
-  --text-primary: #172033;
-  --text-secondary: #667085;
+  --text-primary: #1f2937;
+  --text-secondary: #64748b;
   --text-muted: #98a2b3;
-  --border: #dfe4ec;
-  --border-hover: #c4ccda;
-  --accent: #5b5bd6;
-  --accent-hover: #4747b8;
-  --accent-soft: #eeefff;
-  --reply-line: #b8b9f2;
+  --border: #e2e8f0;
+  --border-hover: #cbd5e1;
+  --accent: #635bff;
+  --accent-hover: #5148e5;
+  --accent-soft: #f0efff;
+  --reply-line: #c4b5fd;
   --success: #218a62;
   --error: #c24141;
   --warning: #c77b19;
@@ -41,8 +41,8 @@
   --space-5: 1.5rem;
   --space-6: 2rem;
   --space-7: 3rem;
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
   --shadow-subtle: var(--shadow-card);
 }
 
@@ -91,6 +91,7 @@ button {
   font-weight: 650;
   justify-content: center;
   padding: 0.625rem 1rem;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
   transition:
     background-color 150ms ease,
     border-color 150ms ease,

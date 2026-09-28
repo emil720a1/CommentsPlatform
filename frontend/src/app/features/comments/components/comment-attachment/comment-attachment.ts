@@ -17,7 +17,10 @@ export class CommentAttachment {
   protected readonly lightboxOpen = signal(false);
 
   protected readonly downloadUrl = computed(() =>
-    new URL(this.attachment().downloadUrl, environment.apiUrl).toString(),
+    new URL(
+      this.attachment().downloadUrl,
+      new URL(environment.apiUrl, document.baseURI),
+    ).toString(),
   );
 
   protected readonly previewUrl = computed(() => {

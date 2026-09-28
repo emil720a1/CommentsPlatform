@@ -1,8 +1,10 @@
 using CommentsPlatform.Application.Common.Abstractions.Persistence;
 using CommentsPlatform.Application.Common.Abstractions.Security;
 using CommentsPlatform.Application.Features.Comments.Create;
+using CommentsPlatform.Application.Features.Comments.Events;
 using CommentsPlatform.Domain;
 using ErrorOr;
+using MediatR;
 using Moq;
 
 namespace CommentsPlatform.Application.UnitTests.Features.Comments.Create;
@@ -17,6 +19,7 @@ public sealed class CreateCommentCommandHandlerTests
     private readonly Mock<TimeProvider> _timeProviderMock;
     private readonly CreateCommentCommandHandler _handler;
     private readonly Mock<IHtmlSanitizer> _htmlSanitizerMock;
+    private readonly Mock<IPublisher> _publisherMock;
 
     public CreateCommentCommandHandlerTests()
     {
@@ -24,6 +27,7 @@ public sealed class CreateCommentCommandHandlerTests
         _captchaValidatorMock = new Mock<ICaptchaValidator>();
         _timeProviderMock = new Mock<TimeProvider>();
         _htmlSanitizerMock = new Mock<IHtmlSanitizer>();
+        _publisherMock = new Mock<IPublisher>();
 
         _captchaValidatorMock.Setup(validator => validator.IsValidAsync(
             It.IsAny<string>(),
@@ -34,11 +38,18 @@ public sealed class CreateCommentCommandHandlerTests
             .Setup(timeProvider => timeProvider.GetUtcNow())
             .Returns(FixedUtcNow);
 
+        _publisherMock
+            .Setup(publisher => publisher.Publish(
+                It.IsAny<CommentCreatedEvent>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
         _handler = new CreateCommentCommandHandler(
             _commentRepositoryMock.Object,
             _captchaValidatorMock.Object,
             _htmlSanitizerMock.Object,
-            _timeProviderMock.Object);
+            _timeProviderMock.Object,
+            _publisherMock.Object);
 
         _htmlSanitizerMock
             .Setup(sanitizer => sanitizer.Sanitize(It.IsAny<string>()))
@@ -95,6 +106,64 @@ public sealed class CreateCommentCommandHandlerTests
         _commentRepositoryMock.Verify(
             repository => repository.ExistsAsync(
                 It.IsAny<Guid>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WithValidComment_PublishesCommentCreatedEvent()
+    {
+        var command = new CreateCommentCommand(
+            "user123",
+            "user@example.com",
+            null,
+            "Test message",
+            null,
+            "valid-captcha-token");
+
+        _commentRepositoryMock
+            .Setup(repository => repository.AddAsync(
+                It.IsAny<Comment>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var result = await _handler.Handle(
+            command,
+            CancellationToken.None);
+
+        Assert.False(result.IsError);
+
+        _publisherMock.Verify(
+            publisher => publisher.Publish(
+                It.Is<CommentCreatedEvent>(eventData =>
+                    eventData.CommentId == result.Value),
+                CancellationToken.None),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenPersistenceFails_DoesNotPublishCommentCreatedEvent()
+    {
+        var command = new CreateCommentCommand(
+            "user123",
+            "user@example.com",
+            null,
+            "Test message",
+            null,
+            "valid-captcha-token");
+
+        _commentRepositoryMock
+            .Setup(repository => repository.AddAsync(
+                It.IsAny<Comment>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Persistence failed."));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _handler.Handle(command, CancellationToken.None));
+
+        _publisherMock.Verify(
+            publisher => publisher.Publish(
+                It.IsAny<CommentCreatedEvent>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -263,6 +332,13 @@ public sealed class CreateCommentCommandHandlerTests
         _commentRepositoryMock.Verify(
             repository => repository.AddAsync(
                 It.IsAny<Comment>(),
+                cancellationToken),
+            Times.Once);
+
+        _publisherMock.Verify(
+            publisher => publisher.Publish(
+                It.Is<CommentCreatedEvent>(eventData =>
+                    eventData.CommentId == result.Value),
                 cancellationToken),
             Times.Once);
     }

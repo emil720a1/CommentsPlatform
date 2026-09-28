@@ -1,5 +1,6 @@
 using CommentsPlatform.Application.Common.Abstractions.Persistence;
 using CommentsPlatform.Application.Common.Abstractions.Security;
+using CommentsPlatform.Application.Features.Comments.Events;
 using CommentsPlatform.Domain;
 using ErrorOr;
 using MediatR;
@@ -13,17 +14,20 @@ public sealed class CreateCommentCommandHandler
     private readonly ICaptchaValidator _captchaValidator;
     private readonly TimeProvider _timeProvider;
     private readonly IHtmlSanitizer _htmlSanitizer;
+    private readonly IPublisher _publisher;
 
     public CreateCommentCommandHandler(
         ICommentRepository commentRepository,
         ICaptchaValidator captchaValidator,
         IHtmlSanitizer htmlSanitizer,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        IPublisher publisher)
     {
         _commentRepository = commentRepository;
         _captchaValidator = captchaValidator;
         _htmlSanitizer = htmlSanitizer;
         _timeProvider = timeProvider;
+        _publisher = publisher;
     }
 
     public async Task<ErrorOr<Guid>> Handle(
@@ -70,6 +74,10 @@ public sealed class CreateCommentCommandHandler
         }
 
         await _commentRepository.AddAsync(comment, cancellationToken);
+
+        await _publisher.Publish(
+            new CommentCreatedEvent(comment.Id),
+            cancellationToken);
 
         return comment.Id;
     }

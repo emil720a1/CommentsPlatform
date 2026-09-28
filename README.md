@@ -300,6 +300,21 @@ The API applies migrations only when `Database__ApplyMigrations=true` is set by
 the Compose configuration. This is intended for the local full-stack startup;
 production deployments should run migrations as an explicit deployment step.
 
+### Demo data and database diagram
+
+The database model is documented in [`docs/database/schema.yml`](docs/database/schema.yml)
+and [`docs/database/schema.mmd`](docs/database/schema.mmd). After the stack is
+running and migrations have completed, load safe, idempotent local demo data with:
+
+```bash
+docker compose exec -T sqlserver sh -c \
+  '/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -i /dev/stdin' \
+  < docs/demo/seed.sql
+```
+
+The seed contains example users, root comments, and one nested reply. It does not
+contain real personal data or attachment metadata.
+
 Configure the secret through ASP.NET Core User Secrets as described in [Local Backend Secrets](#local-backend-secrets).
 
 Environment variables may be used outside local development. Real secret values must not be committed to the repository.

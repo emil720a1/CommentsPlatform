@@ -1,0 +1,33 @@
+version: 1
+name: CommentsPlatform
+description: Comment threads and uploaded attachment metadata.
+
+tables:
+  Comments:
+    primary_key: Id
+    columns:
+      Id: { type: uuid, nullable: false }
+      UserName: { type: varchar(100), nullable: false }
+      Email: { type: varchar(320), nullable: false }
+      HomePage: { type: varchar(2048), nullable: true }
+      Message: { type: text, nullable: false }
+      CreatedAt: { type: datetimeoffset, nullable: false }
+      ParentCommentId: { type: uuid, nullable: true }
+    relationships:
+      - { type: self-reference, column: ParentCommentId, references: Comments.Id, on_delete: restrict }
+      - { type: one-to-many, target: Attachments, via: Attachments.CommentId, on_delete: cascade }
+
+  Attachments:
+    primary_key: Id
+    columns:
+      Id: { type: uuid, nullable: false }
+      CommentId: { type: uuid, nullable: false }
+      StorageKey: { type: varchar(512), nullable: false }
+      OriginalFileName: { type: varchar(255), nullable: false }
+      ContentType: { type: varchar(255), nullable: false }
+      FileSizeBytes: { type: bigint, nullable: false }
+      Width: { type: int, nullable: true }
+      Height: { type: int, nullable: true }
+      CreatedAt: { type: datetimeoffset, nullable: false }
+    relationships:
+      - { type: many-to-one, column: CommentId, references: Comments.Id, on_delete: cascade }

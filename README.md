@@ -239,6 +239,67 @@ The following configuration keys are supported:
 | `CloudflareTurnstile__ExpectedAction` | No | Expected CAPTCHA action |
 | `CloudflareTurnstile__TimeoutSeconds` | Yes | Maximum provider response time in seconds |
 
+## Run the full stack with Docker
+
+Docker Compose starts SQL Server, applies the committed EF Core migrations, starts
+the API, and serves the Angular production build through nginx. The frontend
+proxies `/api` requests to the API container, so the browser uses one origin.
+
+### Prerequisites
+
+- Docker Desktop with Docker Compose v2;
+- ports `4200` and `5075` available.
+
+### Start
+
+From the repository root:
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+Open [http://localhost:4200](http://localhost:4200). The API is available at
+[http://localhost:5075](http://localhost:5075). The first startup can take a
+few minutes while Docker builds the images and SQL Server becomes healthy.
+
+The `.env` file must contain a non-empty `MSSQL_SA_PASSWORD`. The password must
+meet SQL Server complexity requirements. The Turnstile value in `.env.example`
+is a provider test key; replace it with the appropriate local/test secret when
+comment creation needs CAPTCHA verification.
+
+### Stop and reset
+
+Stop the containers while keeping database and uploads:
+
+```bash
+docker compose down
+```
+
+Remove containers and local Docker volumes, including the SQL Server database
+and uploaded files:
+
+```bash
+docker compose down --volumes
+```
+
+### Troubleshooting
+
+View service logs:
+
+```bash
+docker compose logs -f api
+docker compose logs -f frontend
+docker compose logs -f sqlserver
+```
+
+If a port is already in use, change `API_HOST_PORT`, `FRONTEND_HOST_PORT`, or
+`SQLSERVER_HOST_PORT` in `.env`, then run `docker compose up --build` again.
+
+The API applies migrations only when `Database__ApplyMigrations=true` is set by
+the Compose configuration. This is intended for the local full-stack startup;
+production deployments should run migrations as an explicit deployment step.
+
 Configure the secret through ASP.NET Core User Secrets as described in [Local Backend Secrets](#local-backend-secrets).
 
 Environment variables may be used outside local development. Real secret values must not be committed to the repository.

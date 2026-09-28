@@ -3,7 +3,7 @@
 }
 
 main {
-  inline-size: min(100% - 3rem, 60rem);
+  inline-size: min(100% - 3rem, 64rem);
   margin-inline: auto;
   padding-block: var(--space-7);
 }
@@ -14,7 +14,7 @@ main {
   gap: var(--space-3);
   inline-size: min(100%, 60rem);
   justify-content: space-between;
-  margin: 0 auto var(--space-5);
+  margin: 0 auto var(--space-4);
 }
 
 h1 {
@@ -22,6 +22,15 @@ h1 {
   letter-spacing: -0.025em;
   line-height: 1.2;
   margin: 0;
+}
+
+.page-header::before {
+  background: var(--color-primary);
+  border-radius: 999px;
+  content: '';
+  display: block;
+  height: 0.35rem;
+  width: 2.25rem;
 }
 
 .comments-count {
@@ -32,13 +41,13 @@ h1 {
 
 .sorting {
   align-items: center;
-  background: var(--color-surface-muted);
+  background: rgb(255 255 255 / 72%);
   border-block: 1px solid var(--color-border);
   display: grid;
   gap: var(--space-2);
   grid-template-columns: max-content 13rem max-content 13rem;
   inline-size: min(100%, 60rem);
-  margin: var(--space-5) auto var(--space-3);
+  margin: var(--space-5) auto var(--space-4);
   padding: var(--space-3) var(--space-4);
 }
 
@@ -90,7 +99,7 @@ app-comments-list,
 .results-summary {
   color: var(--color-text-muted);
   font-size: 0.875rem;
-  margin-block: var(--space-4) var(--space-3);
+  margin-block: var(--space-5) var(--space-3);
   text-align: center;
 }
 

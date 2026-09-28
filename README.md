@@ -268,6 +268,11 @@ meet SQL Server complexity requirements. The Turnstile value in `.env.example`
 is a provider test key; replace it with the appropriate local/test secret when
 comment creation needs CAPTCHA verification.
 
+For local Docker development, `CLOUDFLARE_TURNSTILE_EXPECTED_ACTION` is empty
+because Cloudflare's official test credentials return the action `test`. In a
+production environment, set it to `create-comment` and use the matching
+production sitekey and secret key.
+
 ### Stop and reset
 
 Stop the containers while keeping database and uploads:

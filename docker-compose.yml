@@ -31,6 +31,7 @@ services:
       Database__ApplyMigrations: "true"
       ConnectionStrings__DefaultConnection: Server=sqlserver,1433;Database=${MSSQL_DB:-CommentsPlatform};User Id=sa;Password=${MSSQL_SA_PASSWORD:?MSSQL_SA_PASSWORD is required};TrustServerCertificate=True
       CloudflareTurnstile__SecretKey: ${CLOUDFLARE_TURNSTILE_SECRET_KEY:?CLOUDFLARE_TURNSTILE_SECRET_KEY is required}
+      CloudflareTurnstile__ExpectedAction: ${CLOUDFLARE_TURNSTILE_EXPECTED_ACTION:-}
       Cors__AllowedOrigins__0: http://localhost:${FRONTEND_HOST_PORT:-4200}
     ports:
       - "${API_HOST_PORT:-5075}:8080"

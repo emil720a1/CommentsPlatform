@@ -9,4 +9,6 @@ WORKDIR /app
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
 COPY --from=build /app/publish .
+RUN mkdir -p /app/uploads && chown -R $APP_UID:$APP_UID /app
+USER $APP_UID
 ENTRYPOINT ["dotnet", "CommentsPlatform.Api.dll"]

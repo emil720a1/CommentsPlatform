@@ -30,13 +30,13 @@ public sealed class GetCommentsQueryHandler
             request.SortBy,
             request.SortDirection);
 
-        var cachedResult = await _commentsQueryCache.GetAsync(
+        var cacheSnapshot = await _commentsQueryCache.GetAsync(
             parameters,
             cancellationToken);
 
-        if (cachedResult is not null)
+        if (cacheSnapshot.Result is not null)
         {
-            return cachedResult;
+            return cacheSnapshot.Result;
         }
 
         var result = await _commentRepository.GetTopLevelCommentsAsync(
@@ -46,6 +46,7 @@ public sealed class GetCommentsQueryHandler
         await _commentsQueryCache.SetAsync(
             parameters,
             result,
+            cacheSnapshot.Version,
             cancellationToken);
 
         return result;

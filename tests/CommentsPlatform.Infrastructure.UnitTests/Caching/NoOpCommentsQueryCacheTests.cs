@@ -15,7 +15,7 @@ public sealed class NoOpCommentsQueryCacheTests
             CreateParameters(),
             CancellationToken.None);
 
-        Assert.Null(result);
+        Assert.Null(result.Result);
     }
 
     [Fact]
@@ -26,13 +26,14 @@ public sealed class NoOpCommentsQueryCacheTests
         await _cache.SetAsync(
             parameters,
             CreateResult(),
+            0,
             CancellationToken.None);
 
         var result = await _cache.GetAsync(
             parameters,
             CancellationToken.None);
 
-        Assert.Null(result);
+        Assert.Null(result.Result);
     }
 
     [Fact]

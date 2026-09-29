@@ -1,5 +1,14 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, ElementRef, inject, input, output, signal, ViewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  inject,
+  input,
+  OnDestroy,
+  output,
+  signal,
+  ViewChild,
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { catchError, finalize, map, Observable, of, switchMap } from 'rxjs';
 
@@ -14,6 +23,7 @@ import { TurnstileWidget } from '../turnstile-widget/turnstile-widget';
 const MAX_ATTACHMENT_SIZE_BYTES = 100 * 1024;
 const MAX_IMAGE_WIDTH = 320;
 const MAX_IMAGE_HEIGHT = 240;
+const SUCCESS_MESSAGE_DURATION_MS = 30_000;
 
 const ALLOWED_ATTACHMENT_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'text/plain']);
 
@@ -55,7 +65,7 @@ export interface CommentCreatedEvent {
   templateUrl: './comment-form.html',
   styleUrl: './comment-form.scss',
 })
-export class CommentForm {
+export class CommentForm implements OnDestroy {
   private static nextInstanceId = 0;
 
   private readonly formBuilder = inject(FormBuilder);
@@ -63,6 +73,8 @@ export class CommentForm {
   private readonly commentsApi = inject(CommentsApiService);
 
   private attachmentSelectionVersion = 0;
+
+  private successMessageTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   @ViewChild(TurnstileWidget)
   private turnstileWidget?: TurnstileWidget;
@@ -96,6 +108,10 @@ export class CommentForm {
   protected readonly apiErrorMessage = signal<string | null>(null);
 
   protected readonly formattingError = signal<string | null>(null);
+
+  ngOnDestroy(): void {
+    this.clearSuccessMessageTimeout();
+  }
 
   protected readonly commentForm = this.formBuilder.nonNullable.group({
     userName: ['', [Validators.required, Validators.pattern(/^[A-Za-z0-9]+$/)]],
@@ -250,6 +266,7 @@ export class CommentForm {
     }
 
     this.isSubmitting.set(true);
+    this.clearSuccessMessageTimeout();
     this.successMessage.set(null);
     this.apiErrorMessage.set(null);
 
@@ -274,6 +291,7 @@ export class CommentForm {
 
           this.resetAfterCreatedComment();
           this.successMessage.set('Коментар успішно створено.');
+          this.scheduleSuccessMessageDismissal();
           this.commentCreated.emit({ attachmentErrorMessage: null });
         },
         error: (error: HttpErrorResponse) => {
@@ -287,6 +305,24 @@ export class CommentForm {
     if (!this.isSubmitting()) {
       this.replyCancelled.emit();
     }
+  }
+
+  private scheduleSuccessMessageDismissal(): void {
+    this.clearSuccessMessageTimeout();
+
+    this.successMessageTimeoutId = setTimeout(() => {
+      this.successMessage.set(null);
+      this.successMessageTimeoutId = null;
+    }, SUCCESS_MESSAGE_DURATION_MS);
+  }
+
+  private clearSuccessMessageTimeout(): void {
+    if (this.successMessageTimeoutId === null) {
+      return;
+    }
+
+    clearTimeout(this.successMessageTimeoutId);
+    this.successMessageTimeoutId = null;
   }
 
   private createRequest(): CreateCommentRequest {

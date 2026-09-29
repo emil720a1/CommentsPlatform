@@ -14,40 +14,42 @@
   }
 
   <form [formGroup]="commentForm" (ngSubmit)="onSubmit()" novalidate>
-    <div>
-      <label [for]="fieldIdPrefix + '-userName'">Ім’я користувача</label>
-      <input
-        [id]="fieldIdPrefix + '-userName'"
-        type="text"
-        formControlName="userName"
-        autocomplete="username"
-      />
+    <div class="form-row">
+      <div>
+        <label [for]="fieldIdPrefix + '-userName'">Ім’я користувача</label>
+        <input
+          [id]="fieldIdPrefix + '-userName'"
+          type="text"
+          formControlName="userName"
+          autocomplete="nickname"
+        />
 
-      @if (commentForm.controls.userName.touched) {
-        @if (commentForm.controls.userName.hasError('required')) {
-          <small role="alert">Введіть ім’я користувача.</small>
-        } @else if (commentForm.controls.userName.hasError('pattern')) {
-          <small role="alert">Ім’я може містити лише латинські літери та цифри.</small>
+        @if (commentForm.controls.userName.touched) {
+          @if (commentForm.controls.userName.hasError('required')) {
+            <small role="alert">Введіть ім’я користувача.</small>
+          } @else if (commentForm.controls.userName.hasError('pattern')) {
+            <small role="alert">Ім’я може містити лише латинські літери та цифри.</small>
+          }
         }
-      }
-    </div>
+      </div>
 
-    <div>
-      <label [for]="fieldIdPrefix + '-email'">Email</label>
-      <input
-        [id]="fieldIdPrefix + '-email'"
-        type="email"
-        formControlName="email"
-        autocomplete="email"
-      />
+      <div>
+        <label [for]="fieldIdPrefix + '-email'">Email</label>
+        <input
+          [id]="fieldIdPrefix + '-email'"
+          type="email"
+          formControlName="email"
+          autocomplete="email"
+        />
 
-      @if (commentForm.controls.email.touched) {
-        @if (commentForm.controls.email.hasError('required')) {
-          <small role="alert">Введіть email.</small>
-        } @else if (commentForm.controls.email.hasError('email')) {
-          <small role="alert">Введіть коректний email.</small>
+        @if (commentForm.controls.email.touched) {
+          @if (commentForm.controls.email.hasError('required')) {
+            <small role="alert">Введіть email.</small>
+          } @else if (commentForm.controls.email.hasError('email')) {
+            <small role="alert">Введіть коректний email.</small>
+          }
         }
-      }
+      </div>
     </div>
 
     <div>

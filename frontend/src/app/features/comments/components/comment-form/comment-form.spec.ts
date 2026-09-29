@@ -66,6 +66,24 @@ describe('CommentForm', () => {
     expect(getInput('input[type="text"]').value).toBe('');
   });
 
+  it('hides the success message after 30 seconds', () => {
+    vi.useFakeTimers();
+
+    try {
+      fillRequiredFields();
+      submitForm();
+
+      expect(fixture.nativeElement.textContent).toContain('Коментар успішно створено.');
+
+      vi.advanceTimersByTime(30_000);
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.textContent).not.toContain('Коментар успішно створено.');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('shows validation errors and does not submit an empty form', () => {
     const form = fixture.nativeElement.querySelector('form') as HTMLFormElement;
 

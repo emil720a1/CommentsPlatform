@@ -20,10 +20,10 @@ describe('CommentsList', () => {
     fixture.detectChanges();
 
     const homePage = fixture.nativeElement.querySelector(
-      'header a[href="https://example.com/"]',
+      'tbody a[href="https://example.com/"]',
     ) as HTMLAnchorElement;
     const email = fixture.nativeElement.querySelector(
-      'header a[href="mailto:alice@example.com"]',
+      'tbody a[href="mailto:alice@example.com"]',
     ) as HTMLAnchorElement;
 
     expect(fixture.nativeElement.textContent).toContain('Alice1');
@@ -42,15 +42,15 @@ describe('CommentsList', () => {
     fixture.componentRef.setInput('comments', [createComment()]);
     fixture.detectChanges();
 
-    const metadata = fixture.nativeElement.querySelector('.comment-meta') as HTMLElement;
-    const author = metadata.querySelector('.comment-author') as HTMLElement;
-    const email = metadata.querySelector('.comment-email') as HTMLAnchorElement;
-    const date = metadata.querySelector('time') as HTMLTimeElement;
+    const row = fixture.nativeElement.querySelector('tbody tr') as HTMLElement;
+    const author = row.querySelector('.comment-author') as HTMLElement;
+    const email = row.querySelector('.comment-email') as HTMLAnchorElement;
+    const date = row.querySelector('time') as HTMLTimeElement;
 
     expect(author.textContent?.trim()).toBe('Alice1');
     expect(email.textContent?.trim()).toBe('alice@example.com');
     expect(date.dateTime).toBe('2026-09-27T10:00:00Z');
-    expect(metadata.textContent).not.toContain('·');
+    expect(row.textContent).not.toContain('·');
   });
 
   it('sanitizes unsafe message markup', () => {
@@ -133,7 +133,7 @@ describe('CommentsList', () => {
     fixture.componentRef.setInput('comments', [createComment({ homePage: null })]);
     fixture.detectChanges();
 
-    const author = fixture.nativeElement.querySelector('.comment-author') as HTMLElement;
+    const author = fixture.nativeElement.querySelector('tbody .comment-author') as HTMLElement;
 
     expect(author.tagName).toBe('STRONG');
     expect(author.textContent?.trim()).toBe('Alice1');
@@ -147,7 +147,7 @@ describe('CommentsList', () => {
     fixture.detectChanges();
 
     const authorLink = fixture.nativeElement.querySelector(
-      '.comment-author--link',
+      'tbody .comment-author--link',
     ) as HTMLAnchorElement;
 
     expect(authorLink).not.toBeNull();
@@ -160,7 +160,7 @@ describe('CommentsList', () => {
     fixture.componentRef.setInput('comments', [createComment()]);
     fixture.detectChanges();
 
-    const timeElement = fixture.nativeElement.querySelector('time') as HTMLTimeElement;
+    const timeElement = fixture.nativeElement.querySelector('tbody time') as HTMLTimeElement;
 
     expect(timeElement.dateTime).toBe('2026-09-27T10:00:00Z');
     expect(timeElement.textContent?.trim().length).toBeGreaterThan(0);

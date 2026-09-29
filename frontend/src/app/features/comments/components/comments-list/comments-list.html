@@ -1,11 +1,94 @@
 <section class="comments-list" aria-label="Список коментарів">
-  @for (comment of comments(); track comment.id) {
-    <app-comment-item
-      [comment]="comment"
-      [replyingTo]="replyingTo()"
-      (replyRequested)="replyRequested.emit($event)"
-      (commentCreated)="commentCreated.emit($event)"
-      (replyCancelled)="replyCancelled.emit()"
-    />
-  }
+  <table class="comments-table">
+    <caption>
+      Головні коментарі
+    </caption>
+    <thead>
+      <tr>
+        <th scope="col">User Name</th>
+        <th scope="col">E-mail</th>
+        <th scope="col">Дата додавання</th>
+        <th scope="col">Повідомлення</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (comment of comments(); track comment.id) {
+        <tr>
+          <td class="comment-author-cell">
+            <app-comment-avatar [userName]="comment.userName" />
+            @if (comment.homePage) {
+              <a
+                class="comment-author comment-author--link"
+                [href]="comment.homePage"
+                target="_blank"
+                rel="noopener noreferrer"
+                [attr.aria-label]="'Домашня сторінка користувача ' + comment.userName"
+              >
+                {{ comment.userName }}
+              </a>
+            } @else {
+              <strong class="comment-author">{{ comment.userName }}</strong>
+            }
+          </td>
+          <td>
+            <a class="comment-email" [href]="'mailto:' + comment.email">{{ comment.email }}</a>
+          </td>
+          <td>
+            <time [attr.datetime]="comment.createdAt">
+              {{ comment.createdAt | date: 'medium' }}
+            </time>
+          </td>
+          <td class="comment-content-cell">
+            <div class="comment-message" [innerHTML]="comment.message"></div>
+
+            @if (comment.attachments.length > 0) {
+              <div class="comment-attachments">
+                @for (attachment of comment.attachments; track attachment.id) {
+                  <app-comment-attachment [attachment]="attachment" />
+                }
+              </div>
+            }
+
+            <div class="comment-actions">
+              <button
+                class="reply-button"
+                type="button"
+                (click)="replyRequested.emit({ id: comment.id, userName: comment.userName })"
+              >
+                Відповісти
+              </button>
+            </div>
+
+            @if (replyingTo()?.id === comment.id) {
+              <section
+                class="reply-composer"
+                [attr.aria-label]="'Форма відповіді для ' + comment.userName"
+              >
+                <app-comment-form
+                  [parentCommentId]="comment.id"
+                  [replyToUserName]="comment.userName"
+                  (commentCreated)="commentCreated.emit($event)"
+                  (replyCancelled)="replyCancelled.emit()"
+                />
+              </section>
+            }
+
+            @if (comment.replies.length > 0) {
+              <section class="replies" aria-label="Відповіді">
+                @for (reply of comment.replies; track reply.id) {
+                  <app-comment-item
+                    [comment]="reply"
+                    [replyingTo]="replyingTo()"
+                    (replyRequested)="replyRequested.emit($event)"
+                    (commentCreated)="commentCreated.emit($event)"
+                    (replyCancelled)="replyCancelled.emit()"
+                  />
+                }
+              </section>
+            }
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
 </section>

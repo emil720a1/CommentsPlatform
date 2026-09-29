@@ -263,19 +263,52 @@ proxies `/api` requests to the API container, so the browser uses one origin.
 
 From the repository root:
 
-```bash
-cp .env.example .env
-docker compose up --build
-```
+1. Create the local environment file:
 
-Open [http://localhost:4200](http://localhost:4200). The API is available at
-[http://localhost:5075](http://localhost:5075). The first startup can take a
-few minutes while Docker builds the images and SQL Server becomes healthy.
+   ```bash
+   cp .env.example .env
+   ```
 
-The `.env` file must contain a non-empty `MSSQL_SA_PASSWORD`. The password must
-meet SQL Server complexity requirements. The Turnstile value in `.env.example`
-is a provider test key; replace it with the appropriate local/test secret when
-comment creation needs CAPTCHA verification.
+2. Open `.env` and set a non-empty strong value for `MSSQL_SA_PASSWORD`.
+   Keep the provided Turnstile test secret for local testing, or replace it
+   with an appropriate provider-approved test secret.
+
+3. Build and start the full stack in the background:
+
+   ```bash
+   docker compose up -d --build
+   ```
+
+4. Wait until SQL Server is healthy and verify all services are running:
+
+   ```bash
+   docker compose ps
+   ```
+
+   The `sqlserver` service must show `healthy`, and `api` and `frontend` must
+   show `running` or `Up`.
+
+5. Open the application in a browser:
+
+   ```text
+   http://localhost:4200/comments
+   ```
+
+6. If startup fails, inspect the service logs:
+
+   ```bash
+   docker compose logs --tail=200 sqlserver
+   docker compose logs --tail=200 api
+   docker compose logs --tail=200 frontend
+   ```
+
+The API is available at [http://localhost:5075](http://localhost:5075). The
+first startup can take a few minutes while Docker builds the images and SQL
+Server becomes healthy.
+
+The password must meet SQL Server complexity requirements. The Turnstile value
+in `.env.example` is a provider test key; replace it with the appropriate
+local/test secret when comment creation needs CAPTCHA verification.
 
 For local Docker development, `CLOUDFLARE_TURNSTILE_EXPECTED_ACTION` is empty
 because Cloudflare's official test credentials return the action `test`. In a
@@ -340,6 +373,28 @@ API integration tests replace the real `ICaptchaValidator` implementation with a
 The client-side CAPTCHA widget is included in the Angular frontend. Local Docker
 development uses Cloudflare's provider-approved test credentials; production
 must use a real site key and secret.
+
+## Requirements checklist
+
+The current implementation covers the following requirements:
+
+- nested replies with cascading display;
+- sorting root comments by user name, email, and creation date in both directions;
+- default LIFO ordering by creation date descending;
+- server-side pagination with 25 items per page for root comments;
+- client-side and server-side validation;
+- server-side HTML sanitization against XSS;
+- parameterized EF Core queries and enum-based sorting, with no dynamic SQL;
+- JPEG, PNG, GIF, and TXT attachments up to 100 KB;
+- proportional image resizing before upload to a maximum of 320×240 pixels;
+- image lightbox preview without a page reload;
+- formatting toolbar for `strong`, `i`, `code`, and `a` tags;
+- Docker Compose startup with SQL Server, API, and Angular/nginx frontend.
+
+One specification point should be confirmed before final submission:
+
+1. Pagination currently counts root comments. Replies are displayed inside
+   their parent row and do not consume a separate page slot.
 
 ## Local SQL Server
 

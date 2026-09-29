@@ -10,6 +10,11 @@ namespace CommentsPlatform.Application.UnitTests.Features.Attachments.Upload;
 
 public sealed class UploadAttachmentCommandHandlerTests
 {
+    private static readonly byte[] PngHeader =
+    [
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
+    ];
+
     private static readonly DateTimeOffset FixedUtcNow =
         new(2026, 9, 25, 12, 0, 0, TimeSpan.Zero);
 
@@ -41,7 +46,7 @@ public sealed class UploadAttachmentCommandHandlerTests
     [Fact]
     public async Task Handle_WhenCommentDoesNotExist_ReturnsNotFoundAndDoesNotStoreFile()
     {
-        await using var content = new MemoryStream([1, 2, 3]);
+        await using var content = new MemoryStream(PngHeader);
         var command = CreateCommand(Guid.NewGuid(), content);
 
         _commentRepositoryMock
@@ -79,7 +84,7 @@ public sealed class UploadAttachmentCommandHandlerTests
     [Fact]
     public async Task Handle_WithValidCommand_StoresFileAndPersistsAttachment()
     {
-        await using var content = new MemoryStream([1, 2, 3]);
+        await using var content = new MemoryStream(PngHeader);
         using var cancellationTokenSource = new CancellationTokenSource();
         var cancellationToken = cancellationTokenSource.Token;
         var comment = CreateComment();
@@ -166,6 +171,30 @@ public sealed class UploadAttachmentCommandHandlerTests
             Times.Once);
     }
 
+    [Fact]
+    public async Task Handle_WhenImageSignatureDoesNotMatch_ReturnsValidationErrorAndDoesNotStoreFile()
+    {
+        await using var content = new MemoryStream([1, 2, 3, 4]);
+        var comment = CreateComment();
+        var command = CreateCommand(comment.Id, content);
+
+        SetupExistingComment(comment);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.IsError);
+        var error = Assert.Single(result.Errors);
+        Assert.Equal(UploadAttachmentErrors.InvalidContent.Code, error.Code);
+        Assert.Equal(UploadAttachmentErrors.InvalidContent.Type, error.Type);
+
+        _fileStorageMock.Verify(
+            storage => storage.SaveAsync(
+                It.IsAny<Stream>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
     [Theory]
     [InlineData("image/jpeg", ".jpg")]
     [InlineData("image/png", ".png")]
@@ -175,7 +204,14 @@ public sealed class UploadAttachmentCommandHandlerTests
         string contentType,
         string expectedExtension)
     {
-        await using var content = new MemoryStream([1]);
+        var signature = contentType switch
+        {
+            "image/jpeg" => new byte[] { 0xFF, 0xD8, 0xFF },
+            "image/gif" => "GIF89a"u8.ToArray(),
+            "image/png" => PngHeader,
+            _ => new byte[] { 1 }
+        };
+        await using var content = new MemoryStream(signature);
         var comment = CreateComment();
         var command = CreateCommand(comment.Id, content) with
         {
@@ -217,7 +253,7 @@ public sealed class UploadAttachmentCommandHandlerTests
     [Fact]
     public async Task Handle_WhenStorageFails_ReturnsStorageFailureAndDoesNotPersist()
     {
-        await using var content = new MemoryStream([1, 2, 3]);
+        await using var content = new MemoryStream(PngHeader);
         var comment = CreateComment();
         var command = CreateCommand(comment.Id, content);
 
@@ -268,7 +304,7 @@ public sealed class UploadAttachmentCommandHandlerTests
     [Fact]
     public async Task Handle_WhenPersistenceFails_DeletesStoredFileAndReturnsPersistenceFailure()
     {
-        await using var content = new MemoryStream([1, 2, 3]);
+        await using var content = new MemoryStream(PngHeader);
         var comment = CreateComment();
         var command = CreateCommand(comment.Id, content);
         const string savedStorageKey = "comments/comment-id/file.png";
@@ -311,7 +347,7 @@ public sealed class UploadAttachmentCommandHandlerTests
     [Fact]
     public async Task Handle_WhenDomainRejectsMetadata_DeletesStoredFileAndReturnsPersistenceFailure()
     {
-        await using var content = new MemoryStream([1]);
+        await using var content = new MemoryStream(PngHeader);
         var comment = CreateComment();
         var command = CreateCommand(comment.Id, content) with
         {
@@ -352,7 +388,7 @@ public sealed class UploadAttachmentCommandHandlerTests
     [Fact]
     public async Task Handle_WhenStorageIsCancelled_PropagatesCancellation()
     {
-        await using var content = new MemoryStream([1]);
+        await using var content = new MemoryStream(PngHeader);
         using var cancellationTokenSource = new CancellationTokenSource();
         await cancellationTokenSource.CancelAsync();
         var cancellationToken = cancellationTokenSource.Token;
@@ -390,7 +426,7 @@ public sealed class UploadAttachmentCommandHandlerTests
     [Fact]
     public async Task Handle_WhenPersistenceIsCancelled_DeletesStoredFileAndPropagatesCancellation()
     {
-        await using var content = new MemoryStream([1]);
+        await using var content = new MemoryStream(PngHeader);
         using var cancellationTokenSource = new CancellationTokenSource();
         await cancellationTokenSource.CancelAsync();
         var cancellationToken = cancellationTokenSource.Token;

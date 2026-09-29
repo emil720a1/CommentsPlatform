@@ -4,6 +4,10 @@ namespace CommentsPlatform.Application.Features.Attachments.Upload;
 
 public static class UploadAttachmentErrors
 {
+    public static readonly Error InvalidContent = Error.Validation(
+        "Attachments.Content.Invalid",
+        "The attachment content does not match its declared content type.");
+
     public static readonly Error CommentNotFound = Error.NotFound(
         "Attachments.CommentNotFound",
         "The comment was not found.");

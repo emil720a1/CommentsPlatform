@@ -13,6 +13,11 @@ namespace CommentsPlatform.Api.IntegrationTests.Endpoints.Comments;
 [Collection(ApiIntegrationTestCollection.Name)]
 public sealed class UploadAttachmentEndpointTests
 {
+    private static readonly byte[] PngHeader =
+    [
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
+    ];
+
     private static readonly DateTimeOffset FixedCreatedAt =
         new(2026, 9, 26, 10, 0, 0, TimeSpan.Zero);
 
@@ -31,7 +36,7 @@ public sealed class UploadAttachmentEndpointTests
     {
         await ResetStateAsync();
         var comment = await SeedCommentAsync();
-        byte[] expectedContent = [1, 2, 3, 4];
+        byte[] expectedContent = PngHeader;
         using var requestContent = CreateMultipartContent(
             expectedContent,
             "image.png",

@@ -88,7 +88,7 @@ describe('CommentsPage', () => {
     expect(fixture.nativeElement.textContent).toContain('Hello world');
 
     const homePageLink = fixture.nativeElement.querySelector(
-      'article header a',
+      'tbody .comment-author--link',
     ) as HTMLAnchorElement;
     expect(homePageLink.href).toBe('https://example.com/');
     expect(homePageLink.rel).toContain('noopener');
@@ -397,7 +397,7 @@ describe('CommentsPage', () => {
     fixture.detectChanges();
 
     const replyButtons = fixture.nativeElement.querySelectorAll(
-      'app-comment-item button',
+      'button.reply-button',
     ) as NodeListOf<HTMLButtonElement>;
     replyButtons[1].click();
     fixture.detectChanges();

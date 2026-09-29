@@ -7,10 +7,164 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-subtle);
-  display: grid;
   overflow: hidden;
 }
 
-.comments-list > app-comment-item:last-child {
+.comments-table {
+  border-collapse: collapse;
+  inline-size: 100%;
+  min-inline-size: 58rem;
+  text-align: start;
+}
+
+.comments-table caption {
+  block-size: 1px;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  inline-size: 1px;
+}
+
+.comments-table th,
+.comments-table td {
+  border-block-end: 1px solid var(--color-border);
+  padding: var(--space-3);
+  vertical-align: top;
+}
+
+.comments-table th {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+  font-weight: 750;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.comments-table tbody tr:last-child td {
+  border-block-end: 0;
+}
+
+.comment-author-cell {
+  min-inline-size: 11rem;
+}
+
+.comment-author-cell app-comment-avatar {
+  display: inline-block;
+  margin-inline-end: var(--space-2);
+  vertical-align: middle;
+}
+
+.comment-author {
+  color: var(--color-text);
+  font-weight: 750;
+}
+
+.comment-author--link {
+  text-decoration-color: var(--color-border-strong);
+  text-decoration-thickness: 1px;
+}
+
+.comment-author--link:hover {
+  color: var(--color-primary-hover);
+  text-decoration-color: currentColor;
+}
+
+.comment-email,
+.comments-table time {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.comment-email {
+  overflow-wrap: anywhere;
+}
+
+.comment-content-cell {
+  min-inline-size: 20rem;
+}
+
+.comment-message {
+  color: #334155;
+  line-height: 1.55;
+  margin-block-end: var(--space-2);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.comment-message :is(p, pre, blockquote) {
+  margin-block: var(--space-2);
+}
+
+.comment-message pre {
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  max-inline-size: 100%;
+  overflow-x: auto;
+  padding: var(--space-3);
+  white-space: pre-wrap;
+}
+
+.comment-actions {
+  margin-block-start: var(--space-2);
+}
+
+.reply-button {
+  background: transparent;
+  border-color: transparent;
+  color: var(--color-primary);
+  font-size: 0.8125rem;
+  min-block-size: 2rem;
+  padding: 0.3rem 0.5rem;
+}
+
+.reply-button:hover:not(:disabled) {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+  color: var(--color-primary-hover);
+}
+
+.reply-composer {
+  --comment-form-margin: var(--space-3) 0 0;
+  --comment-form-padding: var(--space-4);
+  --comment-form-shadow: none;
+  border-inline-start: 3px solid var(--accent);
+  margin-block-start: var(--space-2);
+  padding-inline-start: var(--space-4);
+}
+
+.replies {
+  border-inline-start: 2px solid var(--reply-line);
+  display: grid;
+  margin-block-start: var(--space-3);
+  margin-inline-start: 0;
+  min-inline-size: 0;
+  padding-inline-start: 1rem;
+}
+
+.replies app-comment-item {
+  --comment-avatar-size: 1.875rem;
+  --comment-background: transparent;
+  --comment-border: 1px solid var(--color-border);
+  --comment-padding: var(--space-3);
+}
+
+.replies app-comment-item:last-child {
   --comment-border: 0;
+}
+
+@media (max-width: 60rem) {
+  .comments-list {
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 30rem) {
+  .comments-table {
+    min-inline-size: 48rem;
+  }
 }

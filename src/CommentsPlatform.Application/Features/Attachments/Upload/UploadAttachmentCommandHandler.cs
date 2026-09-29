@@ -39,6 +39,16 @@ public sealed class UploadAttachmentCommandHandler
             return UploadAttachmentErrors.CommentNotFound;
         }
 
+        if (!cancellationToken.IsCancellationRequested &&
+            IsImageContentType(request.ContentType) &&
+            !await HasMatchingImageSignatureAsync(
+                request.Content,
+                request.ContentType,
+                cancellationToken))
+        {
+            return UploadAttachmentErrors.InvalidContent;
+        }
+
         var extension = GetExtension(request.ContentType);
 
         var storageKey =
@@ -125,5 +135,87 @@ public sealed class UploadAttachmentCommandHandler
             "text/plain" => ".txt",
             _ => string.Empty
         };
+    }
+
+    private static async Task<bool> HasMatchingImageSignatureAsync(
+        Stream content,
+        string contentType,
+        CancellationToken cancellationToken)
+    {
+        if (!content.CanSeek)
+        {
+            return false;
+        }
+
+        var originalPosition = content.Position;
+
+        try
+        {
+            var header = new byte[8];
+            var bytesRead = 0;
+
+            while (bytesRead < header.Length)
+            {
+                var read = await content.ReadAsync(
+                    header.AsMemory(bytesRead),
+                    cancellationToken);
+
+                if (read == 0)
+                {
+                    break;
+                }
+
+                bytesRead += read;
+            }
+
+            return contentType.ToLowerInvariant() switch
+            {
+                "image/jpeg" => bytesRead >= 3 &&
+                    header[0] == 0xFF &&
+                    header[1] == 0xD8 &&
+                    header[2] == 0xFF,
+                "image/png" => bytesRead >= 8 &&
+                    StartsWith(
+                        header,
+                        bytesRead,
+                        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A),
+                "image/gif" => bytesRead >= 6 &&
+                    (StartsWith(header, bytesRead, 0x47, 0x49, 0x46, 0x38, 0x37, 0x61) ||
+                     StartsWith(header, bytesRead, 0x47, 0x49, 0x46, 0x38, 0x39, 0x61)),
+                _ => true
+            };
+        }
+        finally
+        {
+            content.Position = originalPosition;
+        }
+    }
+
+    private static bool IsImageContentType(string contentType)
+    {
+        return contentType.StartsWith(
+            "image/",
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool StartsWith(
+        byte[] content,
+        int bytesRead,
+        params byte[] signature)
+    {
+        if (bytesRead < signature.Length)
+        {
+            return false;
+        }
+
+        for (var index = 0; index < signature.Length; index++)
+        {
+            if (content[index] != signature[index])
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

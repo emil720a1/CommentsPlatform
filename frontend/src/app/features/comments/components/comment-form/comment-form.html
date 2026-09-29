@@ -165,6 +165,10 @@
           </button>
         </div>
       }
+
+      @if (isProcessingAttachment()) {
+        <small role="status">Підготовка зображення до 320×240...</small>
+      }
     </div>
 
     <div class="captcha-field">
@@ -180,7 +184,11 @@
     </div>
 
     <div class="form-actions">
-      <button class="submit-button" type="submit" [disabled]="isSubmitting()">
+      <button
+        class="submit-button"
+        type="submit"
+        [disabled]="isSubmitting() || isProcessingAttachment()"
+      >
         {{ isSubmitting() ? 'Надсилання...' : 'Надіслати' }}
       </button>
 

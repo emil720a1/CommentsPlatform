@@ -12,6 +12,8 @@ import {
 import { TurnstileWidget } from '../turnstile-widget/turnstile-widget';
 
 const MAX_ATTACHMENT_SIZE_BYTES = 100 * 1024;
+const MAX_IMAGE_WIDTH = 320;
+const MAX_IMAGE_HEIGHT = 240;
 
 const ALLOWED_ATTACHMENT_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'text/plain']);
 
@@ -29,6 +31,7 @@ const API_ERROR_MESSAGES: Record<string, string> = {
   'Comments.DomainValidation': 'Перевірте введені дані та спробуйте ще раз.',
   'Attachments.File.Required': 'Виберіть attachment.',
   'Attachments.Content.Required': 'Вибраний attachment порожній.',
+  'Attachments.Content.Invalid': 'Вміст файлу не відповідає його типу.',
   'Attachments.FileName.Required': 'Attachment повинен мати назву.',
   'Attachments.FileName.TooLong': 'Назва attachment занадто довга.',
   'Attachments.FileName.Invalid': 'Назва attachment недійсна.',
@@ -59,6 +62,8 @@ export class CommentForm {
 
   private readonly commentsApi = inject(CommentsApiService);
 
+  private attachmentSelectionVersion = 0;
+
   @ViewChild(TurnstileWidget)
   private turnstileWidget?: TurnstileWidget;
 
@@ -79,6 +84,8 @@ export class CommentForm {
   protected readonly fieldIdPrefix = `comment-form-${CommentForm.nextInstanceId++}`;
 
   protected readonly selectedFile = signal<File | null>(null);
+
+  protected readonly isProcessingAttachment = signal(false);
 
   protected readonly attachmentError = signal<string | null>(null);
 
@@ -152,9 +159,11 @@ export class CommentForm {
   protected onFileSelected(event: Event): void {
     const inputElement = event.target as HTMLInputElement;
     const file = inputElement.files?.[0] ?? null;
+    const selectionVersion = ++this.attachmentSelectionVersion;
 
     this.selectedFile.set(null);
     this.attachmentError.set(null);
+    this.isProcessingAttachment.set(false);
 
     if (file === null) {
       return;
@@ -180,12 +189,36 @@ export class CommentForm {
       return;
     }
 
-    this.selectedFile.set(file);
+    if (!file.type.startsWith('image/')) {
+      this.selectedFile.set(file);
+      return;
+    }
+
+    this.isProcessingAttachment.set(true);
+
+    void this.resizeImageIfNeeded(file)
+      .then((preparedFile) => {
+        if (selectionVersion === this.attachmentSelectionVersion) {
+          this.selectedFile.set(preparedFile);
+        }
+      })
+      .catch(() => {
+        if (selectionVersion === this.attachmentSelectionVersion) {
+          this.rejectFile(inputElement, 'Не вдалося прочитати зображення.');
+        }
+      })
+      .finally(() => {
+        if (selectionVersion === this.attachmentSelectionVersion) {
+          this.isProcessingAttachment.set(false);
+        }
+      });
   }
 
   protected removeSelectedFile(): void {
+    this.attachmentSelectionVersion++;
     this.selectedFile.set(null);
     this.attachmentError.set(null);
+    this.isProcessingAttachment.set(false);
 
     if (this.attachmentInput !== undefined) {
       this.attachmentInput.nativeElement.value = '';
@@ -207,7 +240,7 @@ export class CommentForm {
   }
 
   protected onSubmit(): void {
-    if (this.isSubmitting()) {
+    if (this.isSubmitting() || this.isProcessingAttachment()) {
       return;
     }
 
@@ -287,8 +320,62 @@ export class CommentForm {
   }
 
   private rejectFile(inputElement: HTMLInputElement, message: string): void {
+    this.attachmentSelectionVersion++;
+    this.isProcessingAttachment.set(false);
     this.attachmentError.set(message);
     inputElement.value = '';
+  }
+
+  private async resizeImageIfNeeded(file: File): Promise<File> {
+    const objectUrl = URL.createObjectURL(file);
+
+    try {
+      const image = await this.loadImage(objectUrl);
+      const scale = Math.min(
+        MAX_IMAGE_WIDTH / image.naturalWidth,
+        MAX_IMAGE_HEIGHT / image.naturalHeight,
+        1,
+      );
+
+      if (scale === 1) {
+        return file;
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+
+      const context = canvas.getContext('2d');
+      if (context === null) {
+        throw new Error('Canvas is not available.');
+      }
+
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, file.type, 0.9),
+      );
+
+      if (blob === null) {
+        throw new Error('Image conversion failed.');
+      }
+
+      return new File([blob], file.name, {
+        type: file.type,
+        lastModified: file.lastModified,
+      });
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  }
+
+  private loadImage(objectUrl: string): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error('Image could not be loaded.'));
+      image.src = objectUrl;
+    });
   }
 
   private wrapSelection(openingTag: string, closingTag: string, placeholder: string): void {
@@ -355,9 +442,11 @@ export class CommentForm {
   }
 
   private resetAfterCreatedComment(): void {
+    this.attachmentSelectionVersion++;
     this.commentForm.reset();
     this.selectedFile.set(null);
     this.attachmentError.set(null);
+    this.isProcessingAttachment.set(false);
 
     if (this.attachmentInput !== undefined) {
       this.attachmentInput.nativeElement.value = '';

@@ -94,6 +94,7 @@ public sealed class CreateCommentCommandValidatorTests
     [InlineData("invalid")]
     [InlineData("user@")]
     [InlineData("@example.com")]
+    [InlineData("fffg@g")]
     public async Task Validate_WithInvalidEmail_ReturnsInvalidFormatError(
         string invalidEmail)
     {

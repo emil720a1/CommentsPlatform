@@ -115,6 +115,7 @@ public sealed class CommentTests
     [InlineData("user@")]
     [InlineData("@example.com")]
     [InlineData("user@@example.com")]
+    [InlineData("fffg@g")]
     public void Create_WithInvalidEmailFormat_ThrowsArgumentException(
         string invalidEmail)
     {

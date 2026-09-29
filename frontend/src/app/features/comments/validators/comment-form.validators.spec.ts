@@ -1,6 +1,24 @@
 import { FormControl } from '@angular/forms';
 
-import { notBlankValidator, optionalHttpUrlValidator } from './comment-form.validators';
+import {
+  emailValidator,
+  notBlankValidator,
+  optionalHttpUrlValidator,
+} from './comment-form.validators';
+
+describe('emailValidator', () => {
+  it('passes for an email with a domain suffix', () => {
+    expect(emailValidator(new FormControl('alice@example.com'))).toBeNull();
+  });
+
+  it('rejects an email without a domain suffix', () => {
+    expect(emailValidator(new FormControl('fffg@g'))).toEqual({ email: true });
+  });
+
+  it('passes for an empty value because it is intended to combine with required', () => {
+    expect(emailValidator(new FormControl(''))).toBeNull();
+  });
+});
 
 describe('notBlankValidator', () => {
   it('passes for a non-empty string', () => {

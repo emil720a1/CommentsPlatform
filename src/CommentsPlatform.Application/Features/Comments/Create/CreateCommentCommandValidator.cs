@@ -23,6 +23,9 @@ public sealed class CreateCommentCommandValidator
             .WithErrorCode("Comments.Email.Required")
             .EmailAddress()
             .WithMessage("Email format is invalid.")
+            .WithErrorCode("Comments.Email.InvalidFormat")
+            .Must(HaveDomainSuffix)
+            .WithMessage("Email format is invalid.")
             .WithErrorCode("Comments.Email.InvalidFormat");
 
         RuleFor(command => command.HomePage)
@@ -57,5 +60,14 @@ public sealed class CreateCommentCommandValidator
                    out var homePageUri) &&
                (homePageUri.Scheme == Uri.UriSchemeHttp ||
                 homePageUri.Scheme == Uri.UriSchemeHttps);
+    }
+
+    private static bool HaveDomainSuffix(string email)
+    {
+        var atIndex = email.LastIndexOf('@');
+
+        return atIndex > 0 &&
+               atIndex < email.Length - 1 &&
+               email[(atIndex + 1)..].Contains('.');
     }
 }

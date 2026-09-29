@@ -15,6 +15,7 @@ import { catchError, finalize, map, Observable, of, switchMap } from 'rxjs';
 import { ApiProblemDetails, CreateCommentRequest } from '../../models/comment.models';
 import { CommentsApiService } from '../../services/comments-api.service';
 import {
+  emailValidator,
   notBlankValidator,
   optionalHttpUrlValidator,
 } from '../../validators/comment-form.validators';
@@ -115,7 +116,7 @@ export class CommentForm implements OnDestroy {
 
   protected readonly commentForm = this.formBuilder.nonNullable.group({
     userName: ['', [Validators.required, Validators.pattern(/^[A-Za-z0-9]+$/)]],
-    email: ['', [Validators.required, Validators.email]],
+    email: ['', [Validators.required, emailValidator]],
     homePage: ['', optionalHttpUrlValidator],
     message: ['', [Validators.required, notBlankValidator]],
     captchaToken: ['', Validators.required],

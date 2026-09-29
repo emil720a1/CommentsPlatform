@@ -73,7 +73,8 @@ public sealed class Comment
         var normalizedEmail = email.Trim();
 
         if (!MailAddress.TryCreate(normalizedEmail, out var parsedEmail) ||
-            parsedEmail.Address != normalizedEmail)
+            parsedEmail.Address != normalizedEmail ||
+            !parsedEmail.Host.Contains('.', StringComparison.Ordinal))
         {
             throw new ArgumentException(
                 "Email format is invalid.",

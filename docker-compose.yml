@@ -2,6 +2,7 @@ services:
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
     platform: linux/amd64
+    restart: unless-stopped
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?MSSQL_SA_PASSWORD is required}
@@ -26,6 +27,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       Database__ApplyMigrations: "true"
@@ -45,6 +47,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    restart: unless-stopped
     ports:
       - "${FRONTEND_HOST_PORT:-4200}:80"
     depends_on:
